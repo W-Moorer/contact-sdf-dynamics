@@ -612,14 +612,14 @@ This generality is an explicit design objective. The atlas is not tied to a spec
 
 A Python prototype was implemented to validate the end-to-end concept. It is not optimized C++ and should be interpreted as a relative algorithmic comparison. The prototype supports:
 \begin{enumerate}[label=(\arabic*), leftmargin=1.8em]
-\item analytic generation of corner-normal meshes for an ellipsoid, a hexagonal prism and a cone;
+\item analytic generation of corner-normal meshes for smooth, sharp and mixed-feature benchmarks, including the ellipsoid, sphere, hexagonal prism, wedge, capped cylinder, cone and torus;
 \item export of an RMD-like corner-normal mesh block, with one triangle and three corner normals per record;
 \item a scalar grid SDF baseline using trilinear interpolation and trilinear-gradient normals;
 \item an online projection reference using candidate search and closest-feature projection on the mesh;
 \item uniform, adaptive and feature-specific Contact-SDF Atlas construction;
 \item runtime atlas lookup without online projection.
 \end{enumerate}
-The reported feature-adaptive experiments use smooth Hessian fitting on the ellipsoid and disable it on the sharp mixed benchmarks, where the validation focuses on gap, normal-sector and multi-constraint behavior. Hessian storage and transformation are part of the interface, but standalone Hessian accuracy is not claimed by the numerical tables.
+The main three-geometry experiments use smooth Hessian fitting on the ellipsoid and disable it on the sharp mixed benchmarks, where the validation focuses on gap, normal-sector and multi-constraint behavior. A supplemental sphere test directly reports Hessian RMSE against the exact SDF Hessian.
 
 The three analytic geometries are selected to isolate different behaviors. The ellipsoid is smooth and tests curvature. The hexagonal prism has planar faces and sharp edges/vertices. The cone has a smooth side surface, a sharp base rim and a singular apex. For the ellipsoid, analytic normals are
 \begin{equation}
@@ -688,11 +688,39 @@ Cone & 0.554 & \textbf{0.785} & 340.49 & 35.29 & 9.65\\
 \label{fig:results}
 \end{figure}
 
+\subsection{Supplemental geometric validation}
+
+The supplemental validation suite checks whether the same generic backend behaves consistently beyond the three main geometries. No supplemental case uses case-specific runtime logic: the same projection reference, normal-sector extraction, uniform atlas and feature-adaptive atlas builders are used throughout. Table~\ref{tab:supplemental_results} summarizes exact smooth tests, sharp-feature tests, zone-focused cone tests, ablations, mesh refinements, noisy-normal stress tests, a non-convex smooth torus and rigid-transform invariance. The automated advantage audit reports no failed checks.
+
+\begin{table}[htbp]
+\centering
+\caption{Supplemental geometric validation. Normal values are mean angular errors in degrees, cone-hit values are rates, and Hessian values are Frobenius RMSE.}
+\label{tab:supplemental_results}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllll}
+\toprule
+Test & Metric & uniform & feature-adaptive & evidence tag\\
+\midrule
+Sphere exact & normal / Hessian & 1.327 / 0.527 & \textbf{0.527} / \textbf{0.219} & exact smooth jet\\
+Two-plane wedge & gap / cone hit & 0.0186 / 1.000 & \textbf{0.0082} / 1.000 & sharp edge cone\\
+Capped cylinder & cone hit / normal & 0.543 / 11.65 & \textbf{0.914} / \textbf{7.68} & rim sectors\\
+Cone zones & side normal; rim hit; apex hit & 7.997; 0.662; 0.246 & \textbf{3.822}; \textbf{0.926}; \textbf{0.492} & no cone-specific code\\
+Resolution/depth ablations & sphere normal; cylinder cone hit & 4.137--0.745; 0.711 & \textbf{0.517}; \textbf{0.844--0.911} & parameter trend\\
+Mesh consistency & sphere normal; cylinder cone hit & 2.725--1.407; 0.654--0.400 & \textbf{0.631--0.421}; \textbf{0.981--0.980} & tessellation trend\\
+Noisy sphere normals & normal at 2/5/10 deg noise & 2.13 / 4.14 / 7.71 & 1.75 / 4.27 / 8.48 & limitation case\\
+Torus & normal & 14.055 & \textbf{1.383} & non-convex smooth\\
+Rigid transform & max gap / normal difference & n/a & $2.5{\times}10^{-16}$ / $2.2{\times}10^{-16}$ & frame invariance\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The supplemental results support the same claims as the main tests. The sphere and torus rows show that smooth jets are not limited to ellipsoids. The wedge, cylinder and cone-zone rows show that edge, rim and apex sectors are handled by the same normal-sector backend. The ablation and mesh-consistency rows show that the advantage does not depend on a single resolution choice. The noisy-normal row is intentionally not highlighted as a win: it records that finite-difference Hessian estimates amplify input normal noise and should be paired with normal-quality controls for scanned or imported meshes.
+
 \subsection{Interpretation}
 
 The results support three observations. First, a scalar grid SDF is not sufficient when contact normals are important. Its normal error is high on the prism and cone because differentiating trilinear samples cannot preserve normal sectors or singular features. Second, storing local contact records improves the quantities that contact solvers actually use. Smooth jets improve curvature-sensitive normals, while feature records preserve multi-normal behavior. Third, moving projection offline reduces runtime cost. Even in a non-optimized Python implementation, lookup and polynomial evaluation are substantially faster than per-query projection.
 
-The cone remains the most difficult case. Its apex is a true singular point, so no smooth normal or Hessian exists there. The feature-specific atlas improves mean normal error and cone-hit rate, and a separate apex-zone validation confirms that welded-vertex sector exposure improves apex cone-hit rate without cone-specific logic. The highest-percentile cone errors can still be large near singular transitions, which is expected for a compact finite-sector leaf record and should be treated as a resolution/storage trade-off when apex contact is critical.
+The cone remains the most difficult case. Its apex is a true singular point, so no smooth normal or Hessian exists there. The feature-specific atlas improves mean normal error and cone-hit rate, and the apex-zone row in Table~\ref{tab:supplemental_results} confirms that welded-vertex sector exposure improves apex cone-hit rate without cone-specific logic. The highest-percentile cone errors can still be large near singular transitions, which is expected for a compact finite-sector leaf record and should be treated as a resolution/storage trade-off when apex contact is critical.
 
 \section{Discussion: generality, accuracy and limitations}
 \label{sec:discussion}
