@@ -5,7 +5,7 @@ This folder contains a complete LaTeX manuscript draft prepared with Elsevier's 
 Files:
 - `manuscript.tex`: manuscript source
 - `references.bib`: BibTeX references
-- `fig_pipeline.pdf`, `fig_leaf_types.pdf`, `fig_refinement.pdf`, `fig_results.pdf`: figures
+- `fig_pipeline.pdf`, `fig_leaf_types.pdf`, `fig_refinement.pdf`, `fig_results.pdf`, `fig_supplemental_validation.pdf`: figures
 - `highlights.txt`: separate highlights draft
 - `manuscript.pdf`: compiled PDF
 

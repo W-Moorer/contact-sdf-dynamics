@@ -716,9 +716,16 @@ Rigid transform & max gap / normal difference & n/a & $2.5{\times}10^{-16}$ / $2
 
 The supplemental results support the same claims as the main tests. The sphere and torus rows show that smooth jets are not limited to ellipsoids. The wedge, cylinder and cone-zone rows show that edge, rim and apex sectors are handled by the same normal-sector backend. The ablation and mesh-consistency rows show that the advantage does not depend on a single resolution choice. The noisy-normal row is intentionally not highlighted as a win: it records that finite-difference Hessian estimates amplify input normal noise and should be paired with normal-quality controls for scanned or imported meshes.
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.98\textwidth]{fig_supplemental_validation.pdf}
+\caption{Supplemental validation trends. (a) Exact sphere normal error across grid resolutions. (b) Exact sphere Hessian RMSE. (c) Cone side, rim and apex normal-sector hit rates. (d) Cylinder feature-depth ablation. (e) Cylinder mesh-refinement consistency. (f) Noisy-normal stress test, retained as a limitation case rather than an advantage claim.}
+\label{fig:supplemental_validation}
+\end{figure}
+
 \subsection{Interpretation}
 
-The results support three observations. First, a scalar grid SDF is not sufficient when contact normals are important. Its normal error is high on the prism and cone because differentiating trilinear samples cannot preserve normal sectors or singular features. Second, storing local contact records improves the quantities that contact solvers actually use. Smooth jets improve curvature-sensitive normals, while feature records preserve multi-normal behavior. Third, moving projection offline reduces runtime cost. Even in a non-optimized Python implementation, lookup and polynomial evaluation are substantially faster than per-query projection.
+The results support three observations. First, a scalar grid SDF is not sufficient when contact normals are important. Its normal error is high on the prism and cone because differentiating trilinear samples cannot preserve normal sectors or singular features. Second, storing local contact records improves the quantities that contact solvers actually use. Smooth jets improve curvature-sensitive normals, while feature records preserve multi-normal behavior. Figure~\ref{fig:supplemental_validation} shows that these trends persist across exact smooth references, feature-zone subsets and mesh refinements. Third, moving projection offline reduces runtime cost. Even in a non-optimized Python implementation, lookup and polynomial evaluation are substantially faster than per-query projection.
 
 The cone remains the most difficult case. Its apex is a true singular point, so no smooth normal or Hessian exists there. The feature-specific atlas improves mean normal error and cone-hit rate, and the apex-zone row in Table~\ref{tab:supplemental_results} confirms that welded-vertex sector exposure improves apex cone-hit rate without cone-specific logic. The highest-percentile cone errors can still be large near singular transitions, which is expected for a compact finite-sector leaf record and should be treated as a resolution/storage trade-off when apex contact is critical.
 
