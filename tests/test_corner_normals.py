@@ -4,6 +4,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 from contact_sdf.shapes import prism_mesh, cone_mesh, ellipsoid_mesh
 from contact_sdf.mesh_format import weld_positions
+from contact_sdf.projection import MeshProjector
 
 
 def test_same_position_can_have_multiple_corner_normals_on_prism():
@@ -41,3 +42,13 @@ def test_cone_has_side_and_base_normal_sectors():
                 found_rim = True
                 break
     assert found_rim
+
+
+def test_projector_vertex_projection_exposes_welded_normal_sectors():
+    mesh = cone_mesh(n_seg=16)
+    projector = MeshProjector(mesh, k=min(32, mesh.n_faces))
+    apex_z = float(mesh.tags["height"])
+    res = projector.project(np.asarray([[0.0, 0.0, apex_z + 0.02]]),
+                            active_tol=1e-4, sector_angle_deg=20.0)
+    assert int(res.feature[0]) == 2
+    assert len(res.active_normals[0]) >= 4

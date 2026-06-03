@@ -52,6 +52,13 @@ def ellipsoid_mesh(a: float = 1.4, b: float = 0.9, c: float = 0.65,
                             tags={"type": "smooth", "axes": [a, b, c]})
 
 
+def sphere_mesh(radius: float = 1.0, n_lon: int = 32, n_lat: int = 16) -> CornerNormalMesh:
+    mesh = ellipsoid_mesh(a=radius, b=radius, c=radius, n_lon=n_lon, n_lat=n_lat)
+    mesh.name = "sphere"
+    mesh.tags.update({"type": "smooth", "primitive": "sphere", "radius": radius})
+    return mesh
+
+
 def prism_mesh(n_sides: int = 6, radius: float = 1.0, height: float = 1.2) -> CornerNormalMesh:
     """Regular prism with intentionally discontinuous corner normals at edges."""
     h = height / 2.0
@@ -92,6 +99,63 @@ def prism_mesh(n_sides: int = 6, radius: float = 1.0, height: float = 1.2) -> Co
                             tags={"type": "sharp", "n_sides": n_sides, "radius": radius, "height": height})
 
 
+def cylinder_mesh(radius: float = 1.0, height: float = 1.2, n_seg: int = 32) -> CornerNormalMesh:
+    """Capped cylinder with smooth side sectors and sharp cap rims."""
+    h = 0.5 * height
+    angles = np.linspace(0, 2 * np.pi, n_seg, endpoint=False)
+    ring = np.c_[radius * np.cos(angles), radius * np.sin(angles)]
+    tris, ns = [], []
+
+    for i in range(n_seg):
+        j = (i + 1) % n_seg
+        p0 = np.array([ring[i, 0], ring[i, 1], -h])
+        p1 = np.array([ring[j, 0], ring[j, 1], -h])
+        p2 = np.array([ring[j, 0], ring[j, 1], h])
+        p3 = np.array([ring[i, 0], ring[i, 1], h])
+        n0 = _normalize(np.array([np.cos(angles[i]), np.sin(angles[i]), 0.0]))
+        n1 = _normalize(np.array([np.cos(angles[j]), np.sin(angles[j]), 0.0]))
+        tris.append(np.asarray([p0, p1, p2])); ns.append(np.asarray([n0, n1, n1]))
+        tris.append(np.asarray([p0, p2, p3])); ns.append(np.asarray([n0, n1, n0]))
+
+    top_center = np.array([0.0, 0.0, h])
+    bot_center = np.array([0.0, 0.0, -h])
+    nt = np.array([0.0, 0.0, 1.0])
+    nb = np.array([0.0, 0.0, -1.0])
+    for i in range(n_seg):
+        j = (i + 1) % n_seg
+        pi = np.array([ring[i, 0], ring[i, 1], h])
+        pj = np.array([ring[j, 0], ring[j, 1], h])
+        tris.append(np.asarray([top_center, pi, pj])); ns.append(np.tile(nt, (3, 1)))
+        pi_b = np.array([ring[i, 0], ring[i, 1], -h])
+        pj_b = np.array([ring[j, 0], ring[j, 1], -h])
+        tris.append(np.asarray([bot_center, pj_b, pi_b])); ns.append(np.tile(nb, (3, 1)))
+    return CornerNormalMesh(np.asarray(tris), np.asarray(ns), name="cylinder",
+                            tags={"type": "mixed", "primitive": "cylinder",
+                                  "radius": radius, "height": height, "n_seg": n_seg})
+
+
+def wedge_mesh(angle_deg: float = 90.0, length: float = 1.4, height: float = 1.2) -> CornerNormalMesh:
+    """Two finite planes meeting along a sharp dihedral edge."""
+    alpha = np.radians(angle_deg)
+    dirs = [np.array([1.0, 0.0, 0.0]), np.array([np.cos(alpha), np.sin(alpha), 0.0])]
+    normals = [
+        np.array([0.0, -1.0, 0.0]),
+        np.array([np.sin(alpha), -np.cos(alpha), 0.0]),
+    ]
+    tris, ns = [], []
+    z0, z1 = -0.5 * height, 0.5 * height
+    edge0 = np.array([0.0, 0.0, z0])
+    edge1 = np.array([0.0, 0.0, z1])
+    for d, n in zip(dirs, normals):
+        q0 = edge0 + length * d
+        q1 = edge1 + length * d
+        tris.append(np.asarray([edge0, q0, q1])); ns.append(np.tile(_normalize(n), (3, 1)))
+        tris.append(np.asarray([edge0, q1, edge1])); ns.append(np.tile(_normalize(n), (3, 1)))
+    return CornerNormalMesh(np.asarray(tris), np.asarray(ns), name="wedge",
+                            tags={"type": "sharp", "primitive": "wedge",
+                                  "angle_deg": angle_deg, "length": length, "height": height})
+
+
 def cone_mesh(radius: float = 1.0, height: float = 1.4, n_seg: int = 64) -> CornerNormalMesh:
     """Right circular cone with smooth side normals and sharp base rim/apex sectors."""
     # Base at z=0, apex at z=height, outward side normal grad of rho - R(1-z/h).
@@ -115,6 +179,53 @@ def cone_mesh(radius: float = 1.0, height: float = 1.4, n_seg: int = 64) -> Corn
         tris.append(np.asarray([base_center, p_j, p_i])); ns.append(np.tile(nb, (3, 1)))
     return CornerNormalMesh(np.asarray(tris), np.asarray(ns), name="cone",
                             tags={"type": "mixed", "radius": radius, "height": height})
+
+
+def torus_mesh(major_radius: float = 1.1, minor_radius: float = 0.32,
+               n_major: int = 32, n_minor: int = 12) -> CornerNormalMesh:
+    """Smooth torus with analytic corner normals."""
+    verts = np.empty((n_major, n_minor, 3), dtype=float)
+    normals = np.empty_like(verts)
+    for i in range(n_major):
+        u = 2 * np.pi * i / n_major
+        cu, su = np.cos(u), np.sin(u)
+        radial = np.array([cu, su, 0.0])
+        center = major_radius * radial
+        for j in range(n_minor):
+            v = 2 * np.pi * j / n_minor
+            n = _normalize(np.array([np.cos(v) * cu, np.cos(v) * su, np.sin(v)]))
+            verts[i, j] = center + minor_radius * n
+            normals[i, j] = n
+    tris, ns = [], []
+    for i in range(n_major):
+        ip = (i + 1) % n_major
+        for j in range(n_minor):
+            jp = (j + 1) % n_minor
+            ids1 = [(i, j), (ip, j), (ip, jp)]
+            ids2 = [(i, j), (ip, jp), (i, jp)]
+            tris.append(np.asarray([verts[a, b] for a, b in ids1]))
+            ns.append(np.asarray([normals[a, b] for a, b in ids1]))
+            tris.append(np.asarray([verts[a, b] for a, b in ids2]))
+            ns.append(np.asarray([normals[a, b] for a, b in ids2]))
+    return CornerNormalMesh(np.asarray(tris), np.asarray(ns), name="torus",
+                            tags={"type": "smooth", "primitive": "torus",
+                                  "major_radius": major_radius, "minor_radius": minor_radius})
+
+
+def perturb_corner_normals(mesh: CornerNormalMesh, noise_deg: float,
+                           seed: int = 0, name_suffix: str | None = None) -> CornerNormalMesh:
+    """Return a copy with deterministic tangent-plane normal perturbations."""
+    rng = np.random.default_rng(seed)
+    n = np.asarray(mesh.corner_normals, dtype=float)
+    v = rng.normal(size=n.shape)
+    v -= np.sum(v * n, axis=-1, keepdims=True) * n
+    v = _normalize(v)
+    angle = np.radians(noise_deg)
+    noisy = _normalize(np.cos(angle) * n + np.sin(angle) * v)
+    tags = dict(mesh.tags)
+    tags.update({"normal_noise_deg": float(noise_deg), "source_name": mesh.name})
+    suffix = name_suffix if name_suffix is not None else f"noise_{noise_deg:g}deg"
+    return CornerNormalMesh(mesh.triangles.copy(), noisy, name=f"{mesh.name}_{suffix}", tags=tags)
 
 
 # Analytic auxiliary functions for generating near-surface query points.

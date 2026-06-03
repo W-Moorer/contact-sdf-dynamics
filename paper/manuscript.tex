@@ -641,7 +641,7 @@ The metrics are gap root-mean-square error (RMSE), mean normal angular error, no
 
 \subsection{Results}
 
-Table~\ref{tab:main_results} summarizes the main results for the scalar grid SDF, uniform atlas and feature-adaptive atlas. The adaptive atlas improves gap RMSE on all three bodies relative to the grid SDF and the uniform atlas. Mean normal error is much lower than the scalar grid SDF on all three bodies. On the ellipsoid, the uniform second-order atlas happens to have the lowest mean normal error in this low-resolution test, while the feature-adaptive atlas has the lowest gap error. On the sharp prism and cone, the feature-adaptive atlas strongly improves normal consistency because additional resolution is concentrated around normal-sector transitions.
+Table~\ref{tab:main_results} summarizes the main results for the scalar grid SDF, uniform atlas and feature-adaptive atlas. The adaptive atlas improves gap RMSE on all three bodies relative to the grid SDF and the uniform atlas. Mean normal error is also reduced on all three bodies. On the ellipsoid, this improvement comes from the smooth second-order jet and Hessian-based normal update. On the sharp prism and cone, the feature-adaptive atlas improves normal consistency because additional resolution and candidate sectors are concentrated around normal-sector transitions.
 
 \begin{table}[htbp]
 \centering
@@ -654,15 +654,15 @@ Shape & \multicolumn{3}{c}{gap RMSE} & \multicolumn{3}{c}{mean normal error (deg
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
  & grid & uniform & feature-adaptive & grid & uniform & feature-adaptive\\
 \midrule
-Ellipsoid & 0.0378 & 0.0206 & \textbf{0.0131} & 10.6774 & 3.7568 & \textbf{1.1788}\\
-Hexagonal prism & 0.0477 & 0.0396 & \textbf{0.0147} & 20.7709 & 14.3384 & \textbf{5.5385}\\
-Cone & 0.0431 & 0.0382 & \textbf{0.0296} & 34.8051 & 20.7793 & \textbf{14.5812}\\
+Ellipsoid & 0.0378 & 0.0206 & \textbf{0.0121} & 10.6774 & 3.7568 & \textbf{1.0526}\\
+Hexagonal prism & 0.0477 & 0.0396 & \textbf{0.0147} & 20.7709 & 14.3384 & \textbf{5.1923}\\
+Cone & 0.0431 & 0.0382 & \textbf{0.0265} & 34.8051 & 21.0357 & \textbf{11.2105}\\
 \bottomrule
 \end{tabular}}
 
 \end{table}
 
-Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The normal-cone hit rate increases from 0.677 to 0.877 on the prism and from 0.559 to 0.831 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. In the Python prototype, adaptive atlas queries are approximately $9.9$--$10.7$ times faster than the online projection reference.
+Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The normal-cone hit rate increases from 0.677 to 0.892 on the prism and from 0.554 to 0.785 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. In the Python prototype, adaptive atlas queries are approximately $9.6$--$11.2$ times faster than the online projection reference.
 
 \begin{table}[htbp]
 \centering
@@ -673,9 +673,9 @@ Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The nor
 \toprule
 Shape & uniform cone hit & adaptive cone hit & projection ($\mu$s) & adaptive ($\mu$s) & speedup\\
 \midrule
-Ellipsoid & n/a & n/a & 408.43 & 38.91 & 10.50\\
-Hexagonal prism & 0.677 & \textbf{0.877} & 306.13 & 30.95 & 9.89\\
-Cone & 0.559 & \textbf{0.831} & 318.72 & 29.65 & 10.75\\
+Ellipsoid & n/a & n/a & 404.80 & 37.37 & 10.83\\
+Hexagonal prism & 0.677 & \textbf{0.892} & 328.12 & 29.39 & 11.17\\
+Cone & 0.554 & \textbf{0.785} & 340.49 & 35.29 & 9.65\\
 \bottomrule
 \end{tabular}}
 
@@ -692,7 +692,7 @@ Cone & 0.559 & \textbf{0.831} & 318.72 & 29.65 & 10.75\\
 
 The results support three observations. First, a scalar grid SDF is not sufficient when contact normals are important. Its normal error is high on the prism and cone because differentiating trilinear samples cannot preserve normal sectors or singular features. Second, storing local contact records improves the quantities that contact solvers actually use. Smooth jets improve curvature-sensitive normals, while feature records preserve multi-normal behavior. Third, moving projection offline reduces runtime cost. Even in a non-optimized Python implementation, lookup and polynomial evaluation are substantially faster than per-query projection.
 
-The cone remains the most difficult case. Its apex is a true singular point, so no smooth normal or Hessian exists there. The feature-specific atlas improves mean normal error and cone-hit rate, but the highest-percentile errors near the apex remain large. This is expected and is not a failure of the normal-cone model; it indicates that apex-only analytic normal-fan records or even deeper apex refinement should be used when apex contact is critical.
+The cone remains the most difficult case. Its apex is a true singular point, so no smooth normal or Hessian exists there. The feature-specific atlas improves mean normal error and cone-hit rate, and a separate apex-zone validation confirms that welded-vertex sector exposure improves apex cone-hit rate without cone-specific logic. The highest-percentile cone errors can still be large near singular transitions, which is expected for a compact finite-sector leaf record and should be treated as a resolution/storage trade-off when apex contact is critical.
 
 \section{Discussion: generality, accuracy and limitations}
 \label{sec:discussion}
@@ -726,7 +726,7 @@ The expected advantage is largest when the same body is queried many times and w
 
 This paper introduced a feature-aware Contact-SDF Atlas for fast and consistent contact geometry queries from corner-normal triangle meshes. The central idea is to store contact-ready local records instead of scalar distance samples. Smooth leaves store signed-distance jets derived from closest-point geometry, with optional Hessian support, while sharp edge and vertex leaves store active normal-sector models and normal cones. A feature-specific adaptive refinement strategy concentrates resolution near nonsmooth contact features. Runtime queries perform lookup and polynomial or multi-sector evaluation, avoiding closest-point projection during time stepping.
 
-Theoretical derivations show that, in smooth regions, the SDF gradient and Hessian are determined by the closest-point normal and curvature, not by an interpolation basis. At sharp features, the appropriate object is a normal cone rather than a single averaged normal. Prototype benchmarks on analytic smooth and nonsmooth bodies show improved contact-normal consistency compared with scalar trilinear SDFs and about one order of magnitude speedup relative to online projection in Python; direct Hessian error metrics remain a target for later validation. The formulation is solver-agnostic and can be coupled to common contact algorithms in multibody dynamics and finite element analysis.
+Theoretical derivations show that, in smooth regions, the SDF gradient and Hessian are determined by the closest-point normal and curvature, not by an interpolation basis. At sharp features, the appropriate object is a normal cone rather than a single averaged normal. Prototype benchmarks on analytic smooth and nonsmooth bodies show improved contact-normal consistency compared with scalar trilinear SDFs and about one order of magnitude speedup relative to online projection in Python; supplemental sphere tests exercise the Hessian error directly, while robust Hessian estimation for noisy imported normals remains future work. The formulation is solver-agnostic and can be coupled to common contact algorithms in multibody dynamics and finite element analysis.
 
 Future work will extend the prototype in four directions: a production parser for industrial corner-normal formats; exact CAD-backed records for B-rep features; analytic feature records for singular primitives such as cone apices; and dynamic benchmarks in which contact force, energy, constraint violation and runtime are compared against projection-based and scalar-SDF baselines.
 

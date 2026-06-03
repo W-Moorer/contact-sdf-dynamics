@@ -15,11 +15,15 @@ It implements the idea discussed in the conversation:
 
 ## What is generated
 
-`scripts/generate_benchmarks.py` creates three analytic benchmark models:
+`scripts/generate_benchmarks.py` creates analytic benchmark models:
 
 1. `ellipsoid`: smooth surface with analytic corner normals.
-2. `hex_prism`: flat faces and sharp edges; the same geometric nodes carry multiple face-corner normals.
-3. `cone`: smooth side, sharp base rim and apex sectors.
+2. `sphere`: exact smooth SDF, normal and Hessian reference case.
+3. `hex_prism`: flat faces and sharp edges; the same geometric nodes carry multiple face-corner normals.
+4. `wedge`: two planes meeting at a controlled dihedral edge.
+5. `cylinder`: smooth side with sharp capped rims.
+6. `cone`: smooth side, sharp base rim and apex sectors.
+7. `torus`: smooth non-convex surface.
 
 Files are exported both as `.npz` and as a compact RMD-like text format:
 
@@ -35,6 +39,7 @@ This is not the proprietary RecurDyn RMD grammar. It is a transparent corner-nor
 pip install -r requirements.txt
 python scripts/generate_benchmarks.py
 python scripts/build_and_validate.py
+python scripts/supplemental_validation.py
 python scripts/generate_paper_figures.py
 pytest -q
 ```
@@ -43,6 +48,8 @@ Outputs are written under `results/`:
 
 - `validation_summary.csv`
 - `validation_summary.json`
+- `supplemental_validation_summary.csv`
+- `supplemental_validation_summary.json`
 - `*_uniform_atlas.npz`
 - `*_feature_adaptive_atlas.npz`
 
@@ -75,11 +82,12 @@ build_adaptive_contact_sdf_atlas(
     max_depth=1,             # ordinary smooth leaves stop here
     feature_max_depth=3,     # edge/vertex/multi-sector leaves may go deeper
     sector_angle_deg=35.0,   # distinguish real normal sectors
-    feature_enrichment=False # optional extra candidate-plane baking
+    feature_enrichment=True  # bake local candidate planes in feature leaves
 )
 ```
 
 A triangle edge/vertex hit alone is not treated as a physical sharp feature. The feature logic is driven by discontinuous or competing corner-normal sectors, which is the relevant information in the RMD-like corner-normal mesh.
+When the closest point lies on a welded mesh edge or vertex, the projector exposes the incident corner-normal sectors from that welded feature; this keeps uniform, adaptive and validation references on the same normal-sector backend.
 
 A cheap signed-distance Lipschitz precheck skips sample projections for cells that are definitely outside the contact-relevant band.  Runtime evaluation performs only cell lookup and local polynomial/plane evaluation.
 
@@ -97,4 +105,4 @@ The current atlas is intentionally second-order for smooth cells. Third-order te
 
 ## Current validation result
 
-After feature-specific refinement, `pytest -q` returns `10 passed`.  The sharp-body normal-cone hit rate improves from 0.677 to 0.877 on the hexagonal prism and from 0.559 to 0.831 on the cone, while runtime queries remain about 10x faster than online closest-point projection in this Python prototype.  See `VALIDATION_REPORT.md` for details.
+After feature-specific refinement, `pytest -q` returns `11 passed`.  The sharp-body normal-cone hit rate improves from 0.677 to 0.892 on the hexagonal prism and from 0.554 to 0.785 on the cone, while runtime queries remain about 9.6x-11.2x faster than online closest-point projection in this Python prototype.  The supplemental suite reports `issues: []`, including sphere Hessian, wedge, capped cylinder, cone apex/rim/side, ablations, mesh consistency, noisy normals, torus and rigid-transform invariance.  See `VALIDATION_REPORT.md` for details.

@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 from scipy.spatial import cKDTree
-from .mesh_format import CornerNormalMesh
+from .mesh_format import CornerNormalMesh, weld_positions
 
 
 def normalize(v: np.ndarray, eps: float = 1e-12) -> np.ndarray:
@@ -108,6 +108,24 @@ class MeshProjector:
         self.centroids = mesh.triangles.mean(axis=1)
         self.tree = cKDTree(self.centroids)
         self.face_normals = mesh.face_normals()
+        self.welded_vertices, self.corner_vertex_ids = weld_positions(mesh, tol=1e-9)
+        self.vertex_corner_normals = self._build_vertex_corner_normals()
+
+    def _build_vertex_corner_normals(self) -> list[np.ndarray]:
+        out: list[list[np.ndarray]] = [[] for _ in range(len(self.welded_vertices))]
+        flat_vid = self.corner_vertex_ids.reshape(-1)
+        flat_normals = self.mesh.corner_normals.reshape(-1, 3)
+        for vid, n in zip(flat_vid, flat_normals):
+            out[int(vid)].append(n)
+        return [np.asarray(ns, dtype=float) for ns in out]
+
+    @staticmethod
+    def _append_active_sector(active: list[np.ndarray], n: np.ndarray, sector_cos: float) -> None:
+        nn = normalize(np.asarray(n, dtype=float)[None, :])[0]
+        if not np.all(np.isfinite(nn)):
+            return
+        if not any(float(np.dot(nn, aa)) > sector_cos for aa in active):
+            active.append(nn)
 
     def _project_with_ids(self, x: np.ndarray, ids: np.ndarray, active_tol: float, sector_angle_deg: float) -> tuple:
         ids = np.atleast_1d(ids)
@@ -131,11 +149,26 @@ class MeshProjector:
                 nn = normalize((self.mesh.corner_normals[f2] * bary[loc, :, None]).sum(axis=0, keepdims=True))[0]
                 # Keep only genuinely different normal sectors. Smooth-chart
                 # variations are not a normal cone.
-                if not any(np.dot(nn, aa) > sector_cos for aa in active):
-                    active.append(nn)
+                self._append_active_sector(active, nn, sector_cos)
+        feature_code = int(feature[j])
+        if feature_code > 0:
+            if feature_code == 2:
+                local_vertices = np.array([int(np.argmax(bc))], dtype=int)
+            else:
+                local_vertices = np.flatnonzero(bc > 1e-10)
+                if local_vertices.size < 2:
+                    local_vertices = np.argsort(bc)[-2:]
+            # A closest point on a mesh edge or vertex represents a geometric
+            # feature, not only the selected triangle.  Expose all corner-normal
+            # sectors incident to the welded feature so feature-atlas leaves can
+            # bake the same normal cone that the online projection sees.
+            for lv in local_vertices:
+                vid = int(self.corner_vertex_ids[fid, int(lv)])
+                for nn in self.vertex_corner_normals[vid]:
+                    self._append_active_sector(active, nn, sector_cos)
         if not active:
             active = [n]
-        return phi, p, n, fid, bc, int(feature[j]), np.asarray(active)
+        return phi, p, n, fid, bc, feature_code, np.asarray(active)
 
     def project_one(self, x: np.ndarray, active_tol: float = 2e-3, sector_angle_deg: float = 20.0) -> tuple:
         k = min(self.k, self.mesh.n_faces)

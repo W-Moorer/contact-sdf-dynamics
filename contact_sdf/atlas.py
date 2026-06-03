@@ -182,7 +182,8 @@ def _estimate_hessians(normals: np.ndarray, spacing: float) -> np.ndarray:
 def build_contact_sdf_atlas(projector: MeshProjector, bbox: tuple[np.ndarray, np.ndarray],
                             resolution: int = 31, max_candidates: int = 6,
                             active_tol: float = 8e-3,
-                            multi_if_feature: bool = True) -> ContactSDFAtlas:
+                            multi_if_feature: bool = True,
+                            sector_angle_deg: float = 20.0) -> ContactSDFAtlas:
     """Build a uniform atlas on cell centers.
 
     ``resolution`` is the number of scalar-grid nodes one would use; atlas stores
@@ -199,7 +200,7 @@ def build_contact_sdf_atlas(projector: MeshProjector, bbox: tuple[np.ndarray, np
     axes = [node_origin[d] + (np.arange(ncell) + 0.5) * spacing for d in range(3)]
     X, Y, Z = np.meshgrid(*axes, indexing='ij')
     pts = np.c_[X.ravel(), Y.ravel(), Z.ravel()]
-    res = projector.project(pts, active_tol=active_tol)
+    res = projector.project(pts, active_tol=active_tol, sector_angle_deg=sector_angle_deg)
 
     phi0 = res.phi.reshape((ncell, ncell, ncell))
     normal0 = res.normal.reshape((ncell, ncell, ncell, 3))

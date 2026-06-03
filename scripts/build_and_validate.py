@@ -122,21 +122,26 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
     # grid, then refines cells whose local jet/normal-cone record is not
     # accurate enough at sampled corners and face centers.
     grid = build_grid_sdf(projector, bbox, resolution=resolution, active_tol=0.01)
-    atlas = build_contact_sdf_atlas(projector, bbox, resolution=resolution, active_tol=0.03)
+    sector_angle_deg = 35.0
+    atlas = build_contact_sdf_atlas(
+        projector, bbox, resolution=resolution, active_tol=0.03, sector_angle_deg=sector_angle_deg
+    )
     atlas.save_npz(RESULTS / f"{mesh.name}_uniform_atlas.npz")
     # Feature-specific refinement: smooth shapes use the ordinary adaptive depth;
     # sharp/mixed shapes spend extra depth only around normal-sector transitions.
-    if mesh.name == "ellipsoid":
+    if mesh.tags.get("type") == "smooth":
         adapt_kwargs = dict(base_resolution=5, max_depth=2, feature_max_depth=2,
-                            active_tol=0.025, sector_angle_deg=35.0,
-                            gap_tol_factor=0.08, normal_tol_deg=7.5,
+                            active_tol=0.025, sector_angle_deg=sector_angle_deg,
+                            max_candidates=8,
+                            gap_tol_factor=0.06, normal_tol_deg=4.0,
                             feature_normal_tol_deg=5.0, feature_enrichment=False,
                             hessian_for_smooth=True)
     else:
         adapt_kwargs = dict(base_resolution=4, max_depth=1, feature_max_depth=3,
-                            active_tol=0.005, sector_angle_deg=35.0,
+                            active_tol=0.005, sector_angle_deg=sector_angle_deg,
+                            max_candidates=16,
                             gap_tol_factor=0.10, normal_tol_deg=10.0,
-                            feature_normal_tol_deg=5.0, feature_enrichment=False,
+                            feature_normal_tol_deg=5.0, feature_enrichment=True,
                             hessian_for_smooth=False)
     adaptive = build_adaptive_contact_sdf_atlas(
         projector, bbox, multi_if_feature=False, refine_band=1.5 * band,
@@ -145,7 +150,7 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
     adaptive.save_npz(RESULTS / f"{mesh.name}_feature_adaptive_atlas.npz")
 
     # Accuracy relative to online corner-normal projection baseline.
-    proj = projector.project(queries, active_tol=0.01)
+    proj = projector.project(queries, active_tol=0.01, sector_angle_deg=sector_angle_deg)
     grid_phi, grid_n = grid.eval(queries)
     atlas_eval = atlas.eval(queries)
     adaptive_eval = adaptive.eval(queries)
@@ -166,7 +171,8 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
 
     # Timings on a subset.  Keep projection as online projection baseline.
     bench_q = queries[:min(1600, len(queries))]
-    _, t_proj = time_call(projector.project, bench_q, repeat=2, active_tol=0.01)
+    _, t_proj = time_call(projector.project, bench_q, repeat=2,
+                          active_tol=0.01, sector_angle_deg=sector_angle_deg)
     _, t_grid = time_call(grid.eval, bench_q, repeat=5)
     _, t_atlas = time_call(atlas.eval, bench_q, repeat=5)
     _, t_adaptive = time_call(adaptive.eval, bench_q, repeat=5)
