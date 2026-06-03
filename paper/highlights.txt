@@ -2,4 +2,4 @@ Corner-normal meshes are converted into normal-sector contact geometry.
 The atlas stores contact jets and normal cones, not scalar samples.
 Feature-specific refinement targets sharp edges and vertices.
 Runtime contact queries avoid closest-point projection.
-Benchmarks show improved normals and 9.8-10.7x speedups.
+Benchmarks show improved normals and 9.9-10.7x speedups.

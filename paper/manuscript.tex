@@ -86,7 +86,7 @@ contact mechanics \sep signed distance fields \sep corner-normal meshes \sep nor
 \item The atlas stores contact jets and normal cones, not scalar samples.
 \item Feature-specific refinement targets sharp edges and vertices.
 \item Runtime contact queries avoid closest-point projection.
-\item Benchmarks show improved normals and 9.8--10.7x speedups.
+\item Benchmarks show improved normals and 9.9--10.7x speedups.
 \end{itemize}
 
 \section{Introduction}
@@ -619,7 +619,7 @@ A Python prototype was implemented to validate the end-to-end concept. It is not
 \item uniform, adaptive and feature-specific Contact-SDF Atlas construction;
 \item runtime atlas lookup without online projection.
 \end{enumerate}
-The reported feature-adaptive experiments disable Hessian fitting for runtime clarity and focus on gap, normal and multi-sector behavior. Hessian storage and transformation are part of the interface, but Hessian accuracy is not claimed by the numerical tables.
+The reported feature-adaptive experiments use smooth Hessian fitting on the ellipsoid and disable it on the sharp mixed benchmarks, where the validation focuses on gap, normal-sector and multi-constraint behavior. Hessian storage and transformation are part of the interface, but standalone Hessian accuracy is not claimed by the numerical tables.
 
 The three analytic geometries are selected to isolate different behaviors. The ellipsoid is smooth and tests curvature. The hexagonal prism has planar faces and sharp edges/vertices. The cone has a smooth side surface, a sharp base rim and a singular apex. For the ellipsoid, analytic normals are
 \begin{equation}
@@ -654,7 +654,7 @@ Shape & \multicolumn{3}{c}{gap RMSE} & \multicolumn{3}{c}{mean normal error (deg
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
  & grid & uniform & feature-adaptive & grid & uniform & feature-adaptive\\
 \midrule
-Ellipsoid & 0.0378 & 0.0206 & \textbf{0.0120} & 10.6774 & \textbf{3.7568} & 6.0177\\
+Ellipsoid & 0.0378 & 0.0206 & \textbf{0.0131} & 10.6774 & 3.7568 & \textbf{1.1788}\\
 Hexagonal prism & 0.0477 & 0.0396 & \textbf{0.0147} & 20.7709 & 14.3384 & \textbf{5.5385}\\
 Cone & 0.0431 & 0.0382 & \textbf{0.0296} & 34.8051 & 20.7793 & \textbf{14.5812}\\
 \bottomrule
@@ -662,7 +662,7 @@ Cone & 0.0431 & 0.0382 & \textbf{0.0296} & 34.8051 & 20.7793 & \textbf{14.5812}\
 
 \end{table}
 
-Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The normal-cone hit rate increases from 0.677 to 0.877 on the prism and from 0.559 to 0.831 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. In the Python prototype, adaptive atlas queries are approximately $9.8$--$10.7$ times faster than the online projection reference.
+Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The normal-cone hit rate increases from 0.677 to 0.877 on the prism and from 0.559 to 0.831 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. In the Python prototype, adaptive atlas queries are approximately $9.9$--$10.7$ times faster than the online projection reference.
 
 \begin{table}[htbp]
 \centering
@@ -673,9 +673,9 @@ Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The nor
 \toprule
 Shape & uniform cone hit & adaptive cone hit & projection ($\mu$s) & adaptive ($\mu$s) & speedup\\
 \midrule
-Ellipsoid & n/a & n/a & 424.34 & 43.41 & 9.78\\
-Hexagonal prism & 0.677 & \textbf{0.877} & 340.17 & 32.18 & 10.57\\
-Cone & 0.559 & \textbf{0.831} & 342.64 & 32.14 & 10.66\\
+Ellipsoid & n/a & n/a & 408.43 & 38.91 & 10.50\\
+Hexagonal prism & 0.677 & \textbf{0.877} & 306.13 & 30.95 & 9.89\\
+Cone & 0.559 & \textbf{0.831} & 318.72 & 29.65 & 10.75\\
 \bottomrule
 \end{tabular}}
 
@@ -726,7 +726,7 @@ The expected advantage is largest when the same body is queried many times and w
 
 This paper introduced a feature-aware Contact-SDF Atlas for fast and consistent contact geometry queries from corner-normal triangle meshes. The central idea is to store contact-ready local records instead of scalar distance samples. Smooth leaves store signed-distance jets derived from closest-point geometry, with optional Hessian support, while sharp edge and vertex leaves store active normal-sector models and normal cones. A feature-specific adaptive refinement strategy concentrates resolution near nonsmooth contact features. Runtime queries perform lookup and polynomial or multi-sector evaluation, avoiding closest-point projection during time stepping.
 
-Theoretical derivations show that, in smooth regions, the SDF gradient and Hessian are determined by the closest-point normal and curvature, not by an interpolation basis. At sharp features, the appropriate object is a normal cone rather than a single averaged normal. Prototype benchmarks on analytic smooth and nonsmooth bodies show improved contact-normal consistency compared with scalar trilinear SDFs and about one order of magnitude speedup relative to online projection in Python; Hessian accuracy remains a target for later validation. The formulation is solver-agnostic and can be coupled to common contact algorithms in multibody dynamics and finite element analysis.
+Theoretical derivations show that, in smooth regions, the SDF gradient and Hessian are determined by the closest-point normal and curvature, not by an interpolation basis. At sharp features, the appropriate object is a normal cone rather than a single averaged normal. Prototype benchmarks on analytic smooth and nonsmooth bodies show improved contact-normal consistency compared with scalar trilinear SDFs and about one order of magnitude speedup relative to online projection in Python; direct Hessian error metrics remain a target for later validation. The formulation is solver-agnostic and can be coupled to common contact algorithms in multibody dynamics and finite element analysis.
 
 Future work will extend the prototype in four directions: a production parser for industrial corner-normal formats; exact CAD-backed records for B-rep features; analytic feature records for singular primitives such as cone apices; and dynamic benchmarks in which contact force, energy, constraint violation and runtime are compared against projection-based and scalar-SDF baselines.
 

@@ -52,3 +52,35 @@ def test_adaptive_atlas_refines_and_evaluates_without_online_projection():
     assert np.percentile(ang, 95) < 70.0
     assert np.any(ae.mode == MODE_MULTI)
     assert np.all(np.isfinite(ae.phi))
+
+
+def test_smooth_adaptive_hessian_improves_ellipsoid_normals():
+    from contact_sdf.atlas import build_adaptive_contact_sdf_atlas
+
+    mesh = ellipsoid_mesh(n_lon=10, n_lat=5)
+    bbox = mesh.bbox(pad=0.2)
+    projector = MeshProjector(mesh, k=min(40, mesh.n_faces))
+    q = sample_near_surface(mesh, n=60, band=0.05, seed=17)
+    ref = projector.project(q, active_tol=0.01)
+    common = dict(
+        base_resolution=4,
+        max_depth=1,
+        feature_max_depth=1,
+        active_tol=0.025,
+        sector_angle_deg=35.0,
+        gap_tol_factor=0.10,
+        normal_tol_deg=10.0,
+        feature_normal_tol_deg=5.0,
+        feature_enrichment=False,
+        multi_if_feature=False,
+        refine_band=0.2,
+    )
+
+    no_hessian = build_adaptive_contact_sdf_atlas(projector, bbox, hessian_for_smooth=False, **common)
+    with_hessian = build_adaptive_contact_sdf_atlas(projector, bbox, hessian_for_smooth=True, **common)
+    no_hessian_eval = no_hessian.eval(q)
+    with_hessian_eval = with_hessian.eval(q)
+
+    no_hessian_ang = best_candidate_angle_deg(no_hessian_eval.candidate_normals, ref.normal)
+    with_hessian_ang = best_candidate_angle_deg(with_hessian_eval.candidate_normals, ref.normal)
+    assert float(np.mean(with_hessian_ang)) < 0.75 * float(np.mean(no_hessian_ang))

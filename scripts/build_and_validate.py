@@ -130,15 +130,17 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
         adapt_kwargs = dict(base_resolution=5, max_depth=2, feature_max_depth=2,
                             active_tol=0.025, sector_angle_deg=35.0,
                             gap_tol_factor=0.08, normal_tol_deg=7.5,
-                            feature_normal_tol_deg=5.0, feature_enrichment=False)
+                            feature_normal_tol_deg=5.0, feature_enrichment=False,
+                            hessian_for_smooth=True)
     else:
         adapt_kwargs = dict(base_resolution=4, max_depth=1, feature_max_depth=3,
                             active_tol=0.005, sector_angle_deg=35.0,
                             gap_tol_factor=0.10, normal_tol_deg=10.0,
-                            feature_normal_tol_deg=5.0, feature_enrichment=False)
+                            feature_normal_tol_deg=5.0, feature_enrichment=False,
+                            hessian_for_smooth=False)
     adaptive = build_adaptive_contact_sdf_atlas(
         projector, bbox, multi_if_feature=False, refine_band=1.5 * band,
-        hessian_for_smooth=False, **adapt_kwargs
+        **adapt_kwargs
     )
     adaptive.save_npz(RESULTS / f"{mesh.name}_feature_adaptive_atlas.npz")
 

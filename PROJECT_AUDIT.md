@@ -11,11 +11,12 @@ This audit uses the `research-paper-writing` paper-review checklist and the PDF 
 5. `scripts/build_and_validate.py` no longer rewrites tracked benchmark data when the files already exist, so running validation does not create unrelated data diffs.
 6. The validation report, README, highlights and manuscript tables now use the same current metrics.
 7. `scripts/generate_paper_figures.py` now regenerates `paper/fig_results.pdf` from `results/validation_summary.json`.
+8. Smooth ellipsoid validation now enables Hessian fitting for the feature-adaptive atlas, so Figure 5(b) compares the intended smooth jet model rather than a piecewise-constant normal fallback.
 
 ## Remaining implementation risks
 
 1. The prototype infers multi-sector evidence from local projection candidates rather than from a fully materialized global normal-sector complex.  This is acceptable for the current prototype but should be replaced by explicit welded-vertex sector and chart data before a production claim.
-2. Hessian estimates are implemented by finite differences of projected normals, but the main validation disables smooth Hessian fitting.  A Hessian benchmark is required before making numerical Hessian accuracy claims.
+2. Hessian estimates are implemented by finite differences of projected normals and are now exercised indirectly through ellipsoid normal accuracy.  A standalone Hessian benchmark is still required before making direct numerical Hessian accuracy claims.
 3. The projection baseline is KD-tree candidate based, not a full BVH or exact global closest-feature oracle.  Larger meshes need stronger candidate search validation.
 4. No dynamic contact experiment is implemented yet.  The manuscript currently positions dynamic tests as future work, which is accurate but limits submission strength.
 
