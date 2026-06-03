@@ -1,0 +1,123 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{Konyukhov2008}
+A.~Konyukhov, K.~Schweizerhof, On the solvability of closest point projection
+  procedures in contact analysis: Analysis and solution strategy for surfaces
+  of arbitrary geometry, Computer Methods in Applied Mechanics and Engineering
+  197~(33--40) (2008) 3045--3056.
+\newblock \href {https://doi.org/10.1016/j.cma.2008.02.009}
+  {\path{doi:10.1016/j.cma.2008.02.009}}.
+
+\bibitem{Lu2011}
+J.~Lu, Isogeometric contact analysis: Geometric basis and formulation for
+  frictionless contact, Computer Methods in Applied Mechanics and Engineering
+  200~(5--8) (2011) 726--741.
+\newblock \href {https://doi.org/10.1016/j.cma.2010.09.006}
+  {\path{doi:10.1016/j.cma.2010.09.006}}.
+
+\bibitem{Temizer2011}
+I.~Temizer, P.~Wriggers, T.~J.~R. Hughes, Contact treatment in isogeometric
+  analysis with {NURBS}, Computer Methods in Applied Mechanics and Engineering
+  200~(9--12) (2011) 1100--1112.
+\newblock \href {https://doi.org/10.1016/j.cma.2010.11.020}
+  {\path{doi:10.1016/j.cma.2010.11.020}}.
+
+\bibitem{Wriggers2006}
+P.~Wriggers, Computational Contact Mechanics, Springer, Berlin, 2006.
+
+\bibitem{Laursen2002}
+T.~A. Laursen, Computational Contact and Impact Mechanics, Springer, Berlin,
+  2002.
+
+\bibitem{Konyukhov2013}
+A.~Konyukhov, K.~Schweizerhof, Computational Contact Mechanics: Geometrically
+  Exact Theory for Arbitrary Shaped Bodies, Springer, Berlin, 2013.
+
+\bibitem{Sethian1999}
+J.~A. Sethian, Level Set Methods and Fast Marching Methods, Cambridge
+  University Press, 1999.
+
+\bibitem{OsherFedkiw2003}
+S.~Osher, R.~Fedkiw, Level Set Methods and Dynamic Implicit Surfaces, Springer,
+  2003.
+
+\bibitem{Frisken2000}
+S.~F. Frisken, R.~N. Perry, A.~P. Rockwood, T.~R. Jones, Adaptively sampled
+  distance fields: A general representation of shape for computer graphics,
+  Proceedings of ACM SIGGRAPH (2000) 249--254\href
+  {https://doi.org/10.1145/344779.344899} {\path{doi:10.1145/344779.344899}}.
+
+\bibitem{Museth2013}
+K.~Museth, {VDB}: High-resolution sparse volumes with dynamic topology, ACM
+  Transactions on Graphics 32~(3) (2013) 27:1--27:22.
+\newblock \href {https://doi.org/10.1145/2487228.2487235}
+  {\path{doi:10.1145/2487228.2487235}}.
+
+\bibitem{Koschier2017}
+D.~Koschier, C.~Deul, M.~Brand, J.~Bender, An hp-adaptive discretization
+  algorithm for signed distance field generation, IEEE Transactions on
+  Visualization and Computer Graphics 23~(10) (2017) 2208--2221.
+\newblock \href {https://doi.org/10.1109/TVCG.2017.2730202}
+  {\path{doi:10.1109/TVCG.2017.2730202}}.
+
+\bibitem{Pujol2023}
+E.~P. Puig, et~al., Adaptive approximation of signed distance fields through
+  interpolation of values and derivatives, Computer Aided Geometric Design 100
+  (2023) 102165.
+
+\bibitem{Lai2022}
+Z.~Lai, Y.~Wang, J.~Zhao, Signed distance field framework for unified {DEM}
+  modeling of granular media with arbitrary particle shapes, Computational
+  Mechanics 70 (2022) 763--783.
+\newblock \href {https://doi.org/10.1007/s00466-022-02220-8}
+  {\path{doi:10.1007/s00466-022-02220-8}}.
+
+\bibitem{Li2020IPC}
+M.~Li, Z.~Ferguson, T.~Schneider, T.~Langlois, D.~Zorin, D.~Panozzo, C.~Jiang,
+  D.~M. Kaufman, Incremental potential contact: Intersection- and
+  inversion-free large-deformation dynamics, ACM Transactions on Graphics
+  39~(4) (2020) 49:1--49:20.
+\newblock \href {https://doi.org/10.1145/3386569.3392425}
+  {\path{doi:10.1145/3386569.3392425}}.
+
+\bibitem{Ferguson2023}
+Z.~Ferguson, P.~Jain, D.~Zorin, T.~Schneider, D.~Panozzo, High-order
+  incremental potential contact for elastodynamic simulation on curved meshes,
+  in: ACM SIGGRAPH 2023 Conference Proceedings, ACM, 2023.
+\newblock \href {https://doi.org/10.1145/3588432.3591488}
+  {\path{doi:10.1145/3588432.3591488}}.
+
+\bibitem{Vlachos2001}
+A.~Vlachos, J.~Peters, C.~Boyd, J.~L. Mitchell, Curved {PN} triangles, in:
+  Proceedings of the 2001 Symposium on Interactive 3D Graphics, ACM, 2001, pp.
+  159--166.
+\newblock \href {https://doi.org/10.1145/364338.364387}
+  {\path{doi:10.1145/364338.364387}}.
+
+\bibitem{Botsch2010}
+M.~Botsch, L.~Kobbelt, M.~Pauly, P.~Alliez, B.~Levy, Polygon Mesh Processing, A
+  K Peters, 2010.
+
+\bibitem{Clarke1983}
+F.~H. Clarke, Optimization and Nonsmooth Analysis, Wiley, 1983.
+
+\bibitem{Moreau1988}
+J.~J. Moreau, Unilateral contact and dry friction in finite freedom dynamics,
+  Nonsmooth Mechanics and Applications (1988) 1--82.
+
+\bibitem{StewartTrinkle1996}
+D.~E. Stewart, J.~C. Trinkle, An implicit time-stepping scheme for rigid body
+  dynamics with inelastic collisions and coulomb friction, International
+  Journal for Numerical Methods in Engineering 39~(15) (1996) 2673--2691.
+
+\bibitem{AnitescuPotra1997}
+M.~Anitescu, F.~A. Potra, Formulating dynamic multi-rigid-body contact problems
+  with friction as solvable linear complementarity problems, Nonlinear Dynamics
+  14 (1997) 231--247.
+
+\end{thebibliography}
