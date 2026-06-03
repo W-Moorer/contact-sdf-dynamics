@@ -7,6 +7,7 @@ from contact_sdf.projection import MeshProjector
 from contact_sdf.atlas import build_adaptive_contact_sdf_atlas, MODE_MULTI
 from contact_sdf.metrics import best_candidate_angle_deg, cone_hit_rate
 from contact_sdf.mesh_format import weld_positions
+from scripts.build_and_validate import normal_sector_sharp_mask
 
 
 def _sample_near_geometric_edges(mesh, n=60, band=0.04, seed=123):
@@ -77,3 +78,24 @@ def test_feature_specific_refinement_reaches_deeper_feature_leaves():
                             ref.normal[sharp_mask], tol_deg=10.0)
         assert hit > 0.70
     assert np.all(np.isfinite(ev.phi))
+
+
+def test_sharp_metric_excludes_smooth_benchmark_sector_artifacts():
+    from contact_sdf.shapes import ellipsoid_mesh
+    mesh = ellipsoid_mesh(n_lon=8, n_lat=4)
+    active = [
+        np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+        np.asarray([[0.0, 0.0, 1.0]]),
+    ]
+    mask = normal_sector_sharp_mask(mesh, active)
+    assert not np.any(mask)
+
+
+def test_sharp_metric_flags_competing_sectors_on_sharp_mesh():
+    mesh = prism_mesh(n_sides=6)
+    active = [
+        np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+        np.asarray([[0.0, 0.0, 1.0]]),
+    ]
+    mask = normal_sector_sharp_mask(mesh, active)
+    assert mask.tolist() == [True, False]

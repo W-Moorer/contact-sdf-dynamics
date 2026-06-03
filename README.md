@@ -35,6 +35,7 @@ This is not the proprietary RecurDyn RMD grammar. It is a transparent corner-nor
 pip install -r requirements.txt
 python scripts/generate_benchmarks.py
 python scripts/build_and_validate.py
+python scripts/generate_paper_figures.py
 pytest -q
 ```
 
@@ -96,4 +97,4 @@ The current atlas is intentionally second-order for smooth cells. Third-order te
 
 ## Current validation result
 
-After feature-specific refinement, `pytest -q` returns `7 passed`.  The sharp-body normal-cone hit rate improves from 0.677 to 0.892 on the hexagonal prism and from 0.554 to 0.815 on the cone, while runtime queries remain about 10x faster than online closest-point projection in this Python prototype.  See `VALIDATION_REPORT.md` for details.
+After feature-specific refinement, `pytest -q` returns `9 passed`.  The sharp-body normal-cone hit rate improves from 0.677 to 0.877 on the hexagonal prism and from 0.559 to 0.831 on the cone, while runtime queries remain about 10x faster than online closest-point projection in this Python prototype.  See `VALIDATION_REPORT.md` for details.

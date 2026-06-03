@@ -89,10 +89,27 @@ def build_shape_meshes():
     ]
 
 
+def normal_sector_sharp_mask(mesh: CornerNormalMesh, active_normals: list[np.ndarray]) -> np.ndarray:
+    """Return queries with competing physical normal sectors.
+
+    The sharp-feature metric is not a point-to-triangle region metric.  Smooth
+    analytic benchmarks can project to a triangle edge or vertex without having
+    a physical normal discontinuity.
+    """
+    mask = np.array([(len(a) > 1) for a in active_normals])
+    if mesh.tags.get("type") == "smooth":
+        mask[:] = False
+    return mask
+
+
 def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 180, n_edge: int = 80):
     print(f"\n=== {mesh.name}: faces={mesh.n_faces}, res={resolution} ===", flush=True)
-    mesh.save_npz(DATA / f"{mesh.name}.npz")
-    mesh.save_rmd_like(DATA / f"{mesh.name}.cnmesh")
+    npz_path = DATA / f"{mesh.name}.npz"
+    cnmesh_path = DATA / f"{mesh.name}.cnmesh"
+    if not npz_path.exists():
+        mesh.save_npz(npz_path)
+    if not cnmesh_path.exists():
+        mesh.save_rmd_like(cnmesh_path)
     bbox = mesh.bbox(pad=0.20)
     projector = MeshProjector(mesh, k=min(72, mesh.n_faces))
 
@@ -135,7 +152,7 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
     atlas_ang = best_candidate_angle_deg(atlas_eval.candidate_normals, proj.normal)
     adaptive_ang = best_candidate_angle_deg(adaptive_eval.candidate_normals, proj.normal)
 
-    sharp_mask = np.array([(len(a) > 1) for a in proj.active_normals]) | (proj.feature > 0)
+    sharp_mask = normal_sector_sharp_mask(mesh, proj.active_normals)
     if sharp_mask.any():
         sharp_hit = cone_hit_rate([atlas_eval.candidate_normals[i] for i in np.where(sharp_mask)[0]],
                                   proj.normal[sharp_mask], tol_deg=7.5)

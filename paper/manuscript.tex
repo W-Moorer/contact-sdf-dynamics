@@ -71,7 +71,7 @@
 \address[inst2]{Department of Computational Mechanics, Institution, City, Country}
 
 \begin{abstract}
-Signed distance fields (SDFs) are attractive for contact simulation because they support constant-time geometric queries after preprocessing. However, differentiating an interpolated scalar SDF generally yields contact normals and curvatures that depend on the interpolation basis rather than on the underlying geometry. Conversely, closest-point projection provides geometrically consistent contact quantities but is often too expensive to solve repeatedly in multibody and finite element time stepping. This paper proposes a feature-aware Contact-SDF Atlas for corner-normal triangle meshes, a common engineering format in which each triangle stores three positions and three face-corner normals. The method interprets discontinuous corner normals as normal sectors, constructs smooth charts and sharp feature records, and moves closest-feature computation from runtime to offline atlas construction. Smooth atlas leaves store local signed-distance jets, including gap, normal and Hessian information, whereas nonsmooth edge and vertex leaves store active normal-sector records and normal cones. A feature-specific adaptive refinement strategy concentrates resolution near normal-sector transitions without globally increasing the SDF resolution. The resulting query interface returns contact-ready gap, normal, optional Hessian and multi-normal constraints without online projection. Benchmarks on analytically generated ellipsoids, prisms and cones show that the atlas reduces contact-normal error relative to trilinear scalar SDFs and is about one order of magnitude faster than a projection-based reference in a Python prototype. The formulation is solver-agnostic and can be coupled to penalty, augmented-Lagrangian, LCP/NCP or variational contact solvers.
+Signed distance fields (SDFs) are attractive for contact simulation because they support constant-time geometric queries after preprocessing. However, differentiating an interpolated scalar SDF generally yields contact normals and curvatures that depend on the interpolation basis rather than on the underlying geometry. Conversely, closest-point projection provides geometrically consistent contact quantities but is often too expensive to solve repeatedly in multibody and finite element time stepping. This paper proposes a feature-aware Contact-SDF Atlas for corner-normal triangle meshes, a common engineering format in which each triangle stores three positions and three face-corner normals. The method interprets discontinuous corner normals as normal sectors, builds local smooth and multi-sector contact records, and moves closest-feature computation from runtime to offline atlas construction. Smooth atlas leaves store local signed-distance jets with gap, normal and optional Hessian information, whereas nonsmooth edge and vertex leaves store active normal-sector records and normal cones. A feature-specific adaptive refinement strategy concentrates resolution near normal-sector transitions without globally increasing the SDF resolution. The resulting query interface returns contact-ready gap, normal, optional Hessian and multi-normal constraints without online projection. Benchmarks on analytically generated ellipsoids, prisms and cones show that the atlas reduces contact-normal error relative to trilinear scalar SDFs and is about one order of magnitude faster than a projection-based reference in a Python prototype. The formulation is solver-agnostic and can be coupled to penalty, augmented-Lagrangian, LCP/NCP or variational contact solvers.
 \end{abstract}
 
 \begin{keyword}
@@ -86,7 +86,7 @@ contact mechanics \sep signed distance fields \sep corner-normal meshes \sep nor
 \item The atlas stores contact jets and normal cones, not scalar samples.
 \item Feature-specific refinement targets sharp edges and vertices.
 \item Runtime contact queries avoid closest-point projection.
-\item Benchmarks show improved normals and 9.9--11.4x speedups.
+\item Benchmarks show improved normals and 9.8--10.7x speedups.
 \end{itemize}
 
 \section{Introduction}
@@ -98,7 +98,7 @@ Signed distance fields (SDFs) are a natural candidate for accelerating contact g
 
 Closest-point projection is the opposite extreme. Given a query point, one solves a local minimization problem on the contact surface, obtains the closest point, and derives the signed gap and normal from the geometry itself. The projection viewpoint is classical in contact mechanics and is essential in high-order and isogeometric contact formulations \cite{Konyukhov2008,Lu2011,Temizer2011}. Its difficulty is cost and robustness. Repeatedly solving closest-point problems during contact detection, nonlinear iterations or time stepping can dominate the runtime, especially for many contact candidates. The projection may also be nonunique near sharp edges, vertices or the medial axis. In these locations the signed distance itself is nonsmooth; enforcing a single smoothed normal is often less physical than preserving the active normal cone.
 
-This work proposes a representation that combines the speed of SDF lookup with contact quantities closer to those obtained from projection. The key idea is to avoid storing only scalar samples. Instead, we build a \emph{Contact-SDF Atlas}: a sparse adaptive narrow-band atlas whose leaves store local contact records. Smooth leaves contain a local signed-distance jet, e.g. a Taylor model with gap, normal and Hessian. Nonsmooth leaves contain active normal-sector records and a discrete normal cone. The expensive closest-feature computation is performed during preprocessing and is then compressed into leaf records. Runtime evaluation becomes a cell lookup and a low-order polynomial or multi-plane evaluation.
+This work proposes a representation that combines the speed of SDF lookup with contact quantities closer to those obtained from projection. The key idea is to avoid storing only scalar samples. Instead, we build a \emph{Contact-SDF Atlas}: a sparse adaptive narrow-band atlas whose leaves store local contact records. Smooth leaves contain a local signed-distance jet, e.g. a Taylor model with gap, normal and optional Hessian. Nonsmooth leaves contain active normal-sector records and a discrete normal cone. The expensive closest-feature computation is performed during preprocessing and is then compressed into leaf records. Runtime evaluation becomes a cell lookup and a low-order polynomial or multi-plane evaluation.
 
 The method is designed for corner-normal meshes, but the abstraction is more general. Any source that can provide local surface positions, normal sectors and feature adjacency can be used: an analytic primitive can be sampled into the same form, a CAD boundary representation can be tessellated while preserving face normals and trim features, a high-order finite element boundary can provide curved patch derivatives, and a plain triangle mesh can fall back to face normals. This makes the proposed atlas a geometry backend rather than a specific contact law. It can supply contact quantities to penalty, augmented-Lagrangian, linear complementarity, nonlinear complementarity, nonsmooth time-stepping or variational contact solvers.
 
@@ -108,7 +108,7 @@ The main contributions are:
 \item A feature-aware Contact-SDF Atlas that stores contact-ready records rather than scalar SDF samples: smooth signed-distance jets on smooth charts and normal-cone records at sharp features.
 \item A theoretical derivation of smooth local SDF jets from closest-point geometry and of nonsmooth contact records from active normal sectors.
 \item A feature-specific adaptive refinement strategy that refines edge, vertex and multi-sector leaves more deeply than smooth leaves.
-\item A solver-agnostic query interface returning gap, normal, Hessian and active normal constraints without online closest-point projection.
+\item A solver-agnostic query interface returning gap, normal, optional Hessian and active normal constraints without online closest-point projection.
 \item A prototype validation on analytic smooth and nonsmooth geometries showing improved contact-normal consistency compared with scalar trilinear SDFs and substantially lower runtime than per-query projection.
 \end{enumerate}
 
@@ -619,6 +619,7 @@ A Python prototype was implemented to validate the end-to-end concept. It is not
 \item uniform, adaptive and feature-specific Contact-SDF Atlas construction;
 \item runtime atlas lookup without online projection.
 \end{enumerate}
+The reported feature-adaptive experiments disable Hessian fitting for runtime clarity and focus on gap, normal and multi-sector behavior. Hessian storage and transformation are part of the interface, but Hessian accuracy is not claimed by the numerical tables.
 
 The three analytic geometries are selected to isolate different behaviors. The ellipsoid is smooth and tests curvature. The hexagonal prism has planar faces and sharp edges/vertices. The cone has a smooth side surface, a sharp base rim and a singular apex. For the ellipsoid, analytic normals are
 \begin{equation}
@@ -636,7 +637,7 @@ Four representations are compared:
 \item \textbf{Online projection reference}: runtime closest-feature search and projection, used as a timing and accuracy reference.
 \end{enumerate}
 
-The metrics are gap root-mean-square error (RMSE), mean normal angular error, normal-cone hit rate for sharp models and average microseconds per query. Gap and normal errors are computed against the analytic or high-resolution projection reference used in preprocessing. The normal-cone hit rate is the fraction of sharp-feature queries for which the returned sector set contains a reference-compatible normal sector.
+The metrics are gap root-mean-square error (RMSE), mean normal angular error, normal-cone hit rate for sharp models and average microseconds per query. Gap and normal errors are computed against the online corner-normal projection baseline on the same tessellated mesh. The normal-cone hit rate is the fraction of normal-sector sharp-feature queries for which the returned sector set contains a reference-compatible normal sector. Plain point-to-triangle edge or vertex regions on an otherwise smooth benchmark are not counted as sharp-feature queries.
 
 \subsection{Results}
 
@@ -653,15 +654,15 @@ Shape & \multicolumn{3}{c}{gap RMSE} & \multicolumn{3}{c}{mean normal error (deg
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
  & grid & uniform & feature-adaptive & grid & uniform & feature-adaptive\\
 \midrule
-Ellipsoid & 0.0378 & 0.0206 & \textbf{0.0120} & 10.6770 & \textbf{3.7568} & 6.0177\\
-Hexagonal prism & 0.0476 & 0.0385 & \textbf{0.0115} & 20.6871 & 14.3384 & \textbf{5.1923}\\
-Cone & 0.0429 & 0.0390 & \textbf{0.0331} & 35.3071 & 20.4643 & \textbf{14.1852}\\
+Ellipsoid & 0.0378 & 0.0206 & \textbf{0.0120} & 10.6774 & \textbf{3.7568} & 6.0177\\
+Hexagonal prism & 0.0477 & 0.0396 & \textbf{0.0147} & 20.7709 & 14.3384 & \textbf{5.5385}\\
+Cone & 0.0431 & 0.0382 & \textbf{0.0296} & 34.8051 & 20.7793 & \textbf{14.5812}\\
 \bottomrule
 \end{tabular}}
 
 \end{table}
 
-Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The normal-cone hit rate increases from 0.677 to 0.892 on the prism and from 0.554 to 0.815 on the cone when feature-specific refinement is enabled. In the Python prototype, adaptive atlas queries are approximately $9.9$--$11.4$ times faster than the online projection reference.
+Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The normal-cone hit rate increases from 0.677 to 0.877 on the prism and from 0.559 to 0.831 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. In the Python prototype, adaptive atlas queries are approximately $9.8$--$10.7$ times faster than the online projection reference.
 
 \begin{table}[htbp]
 \centering
@@ -672,9 +673,9 @@ Table~\ref{tab:feature_results} focuses on feature behavior and runtime. The nor
 \toprule
 Shape & uniform cone hit & adaptive cone hit & projection ($\mu$s) & adaptive ($\mu$s) & speedup\\
 \midrule
-Ellipsoid & 0.762 & 0.762 & 473.56 & 47.85 & 9.90\\
-Hexagonal prism & 0.677 & \textbf{0.892} & 396.55 & 34.72 & 11.42\\
-Cone & 0.554 & \textbf{0.815} & 395.40 & 38.12 & 10.37\\
+Ellipsoid & n/a & n/a & 424.34 & 43.41 & 9.78\\
+Hexagonal prism & 0.677 & \textbf{0.877} & 340.17 & 32.18 & 10.57\\
+Cone & 0.559 & \textbf{0.831} & 342.64 & 32.14 & 10.66\\
 \bottomrule
 \end{tabular}}
 
@@ -723,9 +724,9 @@ The expected advantage is largest when the same body is queried many times and w
 \section{Conclusions}
 \label{sec:conclusion}
 
-This paper introduced a feature-aware Contact-SDF Atlas for fast and consistent contact geometry queries from corner-normal triangle meshes. The central idea is to store contact-ready local records instead of scalar distance samples. Smooth leaves store signed-distance jets derived from closest-point geometry, while sharp edge and vertex leaves store active normal-sector models and normal cones. A feature-specific adaptive refinement strategy concentrates resolution near nonsmooth contact features. Runtime queries perform lookup and polynomial or multi-sector evaluation, avoiding closest-point projection during time stepping.
+This paper introduced a feature-aware Contact-SDF Atlas for fast and consistent contact geometry queries from corner-normal triangle meshes. The central idea is to store contact-ready local records instead of scalar distance samples. Smooth leaves store signed-distance jets derived from closest-point geometry, with optional Hessian support, while sharp edge and vertex leaves store active normal-sector models and normal cones. A feature-specific adaptive refinement strategy concentrates resolution near nonsmooth contact features. Runtime queries perform lookup and polynomial or multi-sector evaluation, avoiding closest-point projection during time stepping.
 
-Theoretical derivations show that, in smooth regions, the SDF gradient and Hessian are determined by the closest-point normal and curvature, not by an interpolation basis. At sharp features, the appropriate object is a normal cone rather than a single averaged normal. Prototype benchmarks on analytic smooth and nonsmooth bodies show improved contact-normal consistency compared with scalar trilinear SDFs and about one order of magnitude speedup relative to online projection in Python. The formulation is solver-agnostic and can be coupled to common contact algorithms in multibody dynamics and finite element analysis.
+Theoretical derivations show that, in smooth regions, the SDF gradient and Hessian are determined by the closest-point normal and curvature, not by an interpolation basis. At sharp features, the appropriate object is a normal cone rather than a single averaged normal. Prototype benchmarks on analytic smooth and nonsmooth bodies show improved contact-normal consistency compared with scalar trilinear SDFs and about one order of magnitude speedup relative to online projection in Python; Hessian accuracy remains a target for later validation. The formulation is solver-agnostic and can be coupled to common contact algorithms in multibody dynamics and finite element analysis.
 
 Future work will extend the prototype in four directions: a production parser for industrial corner-normal formats; exact CAD-backed records for B-rep features; analytic feature records for singular primitives such as cone apices; and dynamic benchmarks in which contact force, energy, constraint violation and runtime are compared against projection-based and scalar-SDF baselines.
 
@@ -739,7 +740,7 @@ The authors declare that they have no known competing financial interests or per
 During preparation of this draft, AI-assisted language tools were used to help generate and organize manuscript text. The authors are responsible for reviewing, editing and verifying all scientific content before submission. This statement should be revised according to the final journal policy and actual author workflow.
 
 \section*{Data availability}
-The prototype code and generated benchmark data are intended to be made available as supplementary material or in a public repository upon publication. This statement is a placeholder and should be updated with a repository link or a justified restriction before submission.
+The prototype code, manuscript source and generated benchmark data are available at \url{https://github.com/W-Moorer/contact-sdf-dynamics}. The repository includes the scripts used to generate the tabulated validation metrics.
 
 \section*{Acknowledgements}
 The authors acknowledge discussions on signed-distance contact representations, corner-normal meshes and multibody contact simulation. Funding information should be inserted here.
