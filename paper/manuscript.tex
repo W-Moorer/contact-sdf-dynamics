@@ -619,7 +619,7 @@ A Python prototype was implemented to validate the end-to-end concept. It is not
 \item uniform, adaptive and feature-specific Contact-SDF Atlas construction;
 \item runtime atlas lookup without online projection.
 \end{enumerate}
-The main three-geometry experiments use smooth Hessian fitting on the ellipsoid and disable it on the sharp mixed benchmarks, where the validation focuses on gap, normal-sector and multi-constraint behavior. A supplemental sphere test directly reports Hessian RMSE against the exact SDF Hessian.
+The main three-geometry experiments use the same generic backend. Smooth leaves use local Hessian jets when a unique smooth contact sector is credible, whereas feature leaves store normal-sector records and omit smooth curvature terms. A supplemental sphere test directly reports Hessian RMSE against the exact SDF Hessian.
 
 The three analytic geometries are selected to isolate different behaviors. The ellipsoid is smooth and tests curvature. The hexagonal prism has planar faces and sharp edges/vertices. The cone has a smooth side surface, a sharp base rim and a singular apex. For the ellipsoid, analytic normals are
 \begin{equation}
@@ -641,62 +641,45 @@ The metrics are gap root-mean-square error (RMSE), mean normal angular error, no
 
 \subsection{Results}
 
-Table~\ref{tab:main_results} summarizes the main results for trilinear and tricubic scalar SDFs, the uniform atlas and the feature-adaptive atlas. Tricubic interpolation improves the scalar SDF over trilinear interpolation, especially on the smooth ellipsoid, but it remains a single scalar field and therefore cannot represent normal-sector alternatives at sharp features. The feature-adaptive atlas gives the lowest gap RMSE and mean normal error on all three bodies. On the ellipsoid, this improvement comes from the smooth second-order jet and Hessian-based normal update. On the sharp prism and cone, it comes from additional feature leaves and stored candidate sectors around normal-sector transitions.
+Figure~\ref{fig:results} gives the main visual evidence and Table~\ref{tab:main_results} reports the corresponding values. Tricubic interpolation improves the scalar SDF over trilinear interpolation, especially on the smooth ellipsoid, but it remains a single scalar field and therefore cannot represent normal-sector alternatives at sharp features. The feature-adaptive atlas gives the lowest gap RMSE and mean normal error on all three bodies. On the ellipsoid, this improvement comes from the smooth second-order jet and Hessian-based normal update. On the sharp prism and cone, it comes from additional feature leaves and stored candidate sectors around normal-sector transitions.
 
 \begin{table}[htbp]
 \centering
-\caption{Geometric accuracy metrics for the prototype. Trilinear and tricubic SDFs store only scalar grid samples; the atlas stores local contact records.}
+\caption{Main geometric evidence. Arrows indicate the preferred direction; cone-hit is reported only for physical sharp-feature queries.}
 \label{tab:main_results}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrrr}
+\begin{tabular}{lrrrrrrrrrr}
 \toprule
-Shape & \multicolumn{4}{c}{gap RMSE} & \multicolumn{4}{c}{mean normal error (deg)}\\
-\cmidrule(lr){2-5}\cmidrule(lr){6-9}
- & trilinear & tricubic & uniform & feature-adaptive & trilinear & tricubic & uniform & feature-adaptive\\
+Shape & \multicolumn{4}{c}{gap RMSE $\downarrow$} & \multicolumn{4}{c}{mean normal error $\downarrow$ (deg)} & \multicolumn{2}{c}{cone hit $\uparrow$}\\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-11}
+ & trilinear & tricubic & uniform & adaptive & trilinear & tricubic & uniform & adaptive & uniform & adaptive\\
 \midrule
-Ellipsoid & 0.0378 & 0.0186 & 0.0206 & \textbf{0.0116} & 10.6774 & 3.3153 & 3.7568 & \textbf{1.4331}\\
-Hexagonal prism & 0.0477 & 0.0286 & 0.0396 & \textbf{0.0140} & 20.7709 & 18.7716 & 14.3384 & \textbf{3.3947}\\
-Cone & 0.0431 & 0.0368 & 0.0382 & \textbf{0.0282} & 34.8051 & 25.2501 & 21.0357 & \textbf{8.8565}\\
+Ellipsoid & 0.0378 & 0.0186 & 0.0206 & \textbf{0.0116} & 10.68 & 3.32 & 3.76 & \textbf{1.43} & n/a & n/a\\
+Hexagonal prism & 0.0477 & 0.0286 & 0.0396 & \textbf{0.0140} & 20.77 & 18.77 & 14.34 & \textbf{3.39} & 0.677 & \textbf{0.923}\\
+Cone & 0.0431 & 0.0368 & 0.0382 & \textbf{0.0282} & 34.81 & 25.25 & 21.04 & \textbf{8.86} & 0.554 & \textbf{0.846}\\
 \bottomrule
 \end{tabular}}
 
 \end{table}
 
-Table~\ref{tab:feature_results} focuses on feature behavior and compact runtime queries. The normal-cone hit rate increases from 0.677 to 0.923 on the prism and from 0.554 to 0.846 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. With vectorized batch query code, adaptive atlas lookup is sub-microsecond per query and remains comparable to trilinear scalar lookup while returning contact records rather than only a scalar-field gradient.
+The normal-cone hit rate increases from 0.677 to 0.923 on the prism and from 0.554 to 0.846 on the cone when feature-specific refinement is enabled. The smooth ellipsoid has no physical normal-sector feature, so its cone-hit field is not applicable. With vectorized batch query code, adaptive atlas lookup is sub-microsecond per query and remains comparable to trilinear scalar lookup while returning contact records rather than only a scalar-field gradient.
+
+Table~\ref{tab:build_query_results} separates offline construction cost from query cost. The scalar trilinear and tricubic baselines share the same scalar signed-distance samples, so their construction times are nearly identical; tricubic pays primarily at query time because it evaluates a larger interpolation stencil. The feature-adaptive atlas has a much higher construction cost because it performs offline projection, refinement checks and feature-sector enrichment. The last column reports the approximate number of online-projection queries needed to amortize adaptive atlas construction.
 
 \begin{table}[htbp]
 \centering
-\caption{Feature behavior and compact runtime query cost. Speedup is the ratio of online projection time to feature-adaptive atlas query time.}
-\label{tab:feature_results}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrr}
-\toprule
-Shape & uniform cone hit & adaptive cone hit & projection ($\mu$s) & trilinear ($\mu$s) & tricubic ($\mu$s) & adaptive ($\mu$s) & speedup\\
-\midrule
-Ellipsoid & n/a & n/a & 442.26 & 0.705 & 3.893 & \textbf{0.566} & 782.0\\
-Hexagonal prism & 0.677 & \textbf{0.923} & 343.56 & 0.517 & 3.488 & \textbf{0.433} & 794.0\\
-Cone & 0.554 & \textbf{0.846} & 364.27 & 0.505 & 3.516 & \textbf{0.444} & 820.7\\
-\bottomrule
-\end{tabular}}
-
-\end{table}
-
-Table~\ref{tab:build_query_results} separates offline construction cost from query cost. The scalar trilinear and tricubic baselines share the same scalar signed-distance samples, so their construction times are nearly identical; tricubic pays primarily at query time because it evaluates a larger interpolation stencil. The feature-adaptive atlas has a much higher construction cost because it performs offline projection, refinement checks and feature-sector enrichment. This cost is amortized when the same geometry is queried many times during contact search, nonlinear iterations or time stepping.
-
-\begin{table}[htbp]
-\centering
-\caption{Construction and query costs. Construction is reported in seconds and excludes downstream solver work. Query timings are compact batch evaluations in microseconds per query.}
+\caption{Construction and query profile. Construction is reported in seconds, query time in microseconds per query, and break-even counts in thousands of online-projection queries.}
 \label{tab:build_query_results}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrrrr}
+\begin{tabular}{lrrrrrrrrrr}
 \toprule
-Shape & \multicolumn{4}{c}{construction (s)} & \multicolumn{5}{c}{query ($\mu$s)}\\
-\cmidrule(lr){2-5}\cmidrule(lr){6-10}
- & trilinear & tricubic & uniform atlas & adaptive atlas & projection & trilinear & tricubic & uniform atlas & adaptive atlas\\
+Shape & \multicolumn{4}{c}{construction (s)} & \multicolumn{5}{c}{query ($\mu$s)} & break-even\\
+\cmidrule(lr){2-5}\cmidrule(lr){6-10}\cmidrule(lr){11-11}
+ & trilinear & tricubic & uniform & adaptive & projection & trilinear & tricubic & uniform & adaptive & (k queries)\\
 \midrule
-Ellipsoid & 0.432 & 0.432 & 0.313 & 18.415 & 442.26 & 0.705 & 3.893 & 0.631 & \textbf{0.566}\\
-Hexagonal prism & 0.328 & 0.328 & 0.224 & 73.254 & 343.56 & 0.517 & 3.488 & 0.478 & \textbf{0.433}\\
-Cone & 0.423 & 0.423 & 0.290 & 70.665 & 364.27 & 0.505 & 3.516 & 0.476 & \textbf{0.444}\\
+Ellipsoid & 0.432 & 0.432 & 0.313 & 18.415 & 442.26 & 0.705 & 3.893 & 0.631 & \textbf{0.566} & 41.7\\
+Hexagonal prism & 0.328 & 0.328 & 0.224 & 73.254 & 343.56 & 0.517 & 3.488 & 0.478 & \textbf{0.433} & 213.5\\
+Cone & 0.423 & 0.423 & 0.290 & 70.665 & 364.27 & 0.505 & 3.516 & 0.476 & \textbf{0.444} & 194.2\\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -704,7 +687,7 @@ Cone & 0.423 & 0.423 & 0.290 & 70.665 & 364.27 & 0.505 & 3.516 & 0.476 & \textbf
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.95\textwidth]{fig_results.pdf}
-\caption{Prototype results. (a) Gap RMSE for trilinear SDF, tricubic SDF, uniform atlas and feature-adaptive atlas. (b) Mean contact-normal error. (c) Log-scale runtime speedup of compact trilinear, tricubic and adaptive atlas queries relative to online projection.}
+\caption{Prototype results as a reviewer-facing evidence summary. (a) Mean contact-normal error. (b) Gap RMSE. (c) Normal-cone hit rate on sharp-feature queries. (d) Log-scale compact query time for online projection, scalar SDFs and the feature-adaptive atlas.}
 \label{fig:results}
 \end{figure}
 
