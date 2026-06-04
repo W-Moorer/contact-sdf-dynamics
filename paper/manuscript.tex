@@ -627,68 +627,22 @@ The three analytic geometries are selected to isolate different behaviors. The e
 \end{equation}
 For the prism and cone, the same geometric position can have different corner normals on different incident faces or sectors.
 
-\subsection{Qualitative zero-level reconstruction}
+\subsection{Surface-based contact-error maps}
 
-Before reporting aggregate errors, Figure~\ref{fig:surface_reconstruction_main} and Figure~\ref{fig:surface_reconstruction_supplemental} provide a qualitative geometry check. Each model-method panel is generated as an independent image. The trilinear and tricubic panels are marching-cubes zero level sets of the corresponding scalar SDF interpolants. The atlas panels show the zero-gap contact surface recovered from the stored atlas records along the same corner-normal probes; this is used because feature leaves store multi-sector contact constraints rather than a single globally smooth scalar field.
+Before reporting aggregate errors, Figure~\ref{fig:surface_error_main} and Figure~\ref{fig:surface_error_supplemental} provide a qualitative check on the same geometric support. All methods are drawn on the original input triangle surface; only the face color changes. This avoids comparing the visual smoothness of different zero-level extraction procedures. Face colors report the absolute gap error and normal angular error at triangle face centers relative to the online corner-normal projection reference. For sharp-feature diagnostics, the methods are additionally evaluated at stored corner-normal sectors; red dots mark sharp-sector corners where the returned normal set misses the reference sector by more than $7.5^{\circ}$.
 
 \begin{figure}[htbp]
 \centering
-{\scriptsize
-\setlength{\tabcolsep}{1.5pt}
-\renewcommand{\arraystretch}{0.92}
-\begin{tabular}{@{}lccccc@{}}
- & original & trilinear & tricubic & uniform atlas & feature-adaptive\\
-ellipsoid &
-\includegraphics[width=0.158\textwidth]{fig_surface_ellipsoid_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_ellipsoid_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_ellipsoid_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_ellipsoid_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_ellipsoid_feature_adaptive.png}\\
-hex prism &
-\includegraphics[width=0.158\textwidth]{fig_surface_hex_prism_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_hex_prism_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_hex_prism_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_hex_prism_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_hex_prism_feature_adaptive.png}\\
-cone &
-\includegraphics[width=0.158\textwidth]{fig_surface_cone_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cone_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cone_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cone_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cone_feature_adaptive.png}
-\end{tabular}}
-\caption{Independent zero-level visualizations for the three main benchmark bodies. Scalar SDF columns show interpolated zero level sets; atlas columns show the corresponding zero-gap contact surfaces obtained from stored contact records.}
-\label{fig:surface_reconstruction_main}
+\includegraphics[width=0.98\textwidth]{fig_surface_error_main.pdf}
+\caption{Surface-based contact-error maps for the three main benchmark bodies. Every panel uses the same original triangle surface for a given body, so apparent smoothness of an interpolated zero level set is not used as evidence. The upper row for each body shows $\abs{g}$ error on a logarithmic color scale; the lower row shows normal angular error. Red dots indicate missed sharp normal-sector constraints.}
+\label{fig:surface_error_main}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-{\scriptsize
-\setlength{\tabcolsep}{1.5pt}
-\renewcommand{\arraystretch}{0.92}
-\begin{tabular}{@{}lccccc@{}}
- & original & trilinear & tricubic & uniform atlas & feature-adaptive\\
-sphere &
-\includegraphics[width=0.158\textwidth]{fig_surface_sphere_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_sphere_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_sphere_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_sphere_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_sphere_feature_adaptive.png}\\
-cylinder &
-\includegraphics[width=0.158\textwidth]{fig_surface_cylinder_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cylinder_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cylinder_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cylinder_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_cylinder_feature_adaptive.png}\\
-torus &
-\includegraphics[width=0.158\textwidth]{fig_surface_torus_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_torus_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_torus_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_torus_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_torus_feature_adaptive.png}
-\end{tabular}}
-\caption{Independent zero-level visualizations for supplemental benchmark bodies. The panels use the same rendering and extraction protocol as Figure~\ref{fig:surface_reconstruction_main}.}
-\label{fig:surface_reconstruction_supplemental}
+\includegraphics[width=0.98\textwidth]{fig_surface_error_supplemental.pdf}
+\caption{Surface-based contact-error maps for supplemental benchmark bodies. The visualization protocol is identical to Figure~\ref{fig:surface_error_main}: common original surface geometry, face-center gap and normal errors, and red-dot markers for missed sharp-sector corners.}
+\label{fig:surface_error_supplemental}
 \end{figure}
 
 \subsection{Baselines and metrics}
@@ -705,7 +659,7 @@ The metrics are gap root-mean-square error (RMSE), mean normal angular error, no
 
 \subsection{Results}
 
-Figure~\ref{fig:results} gives the main visual evidence and Table~\ref{tab:main_results} reports the corresponding values. Tricubic interpolation improves the scalar SDF over trilinear interpolation, especially on the smooth ellipsoid, but it remains a single scalar field and therefore cannot represent normal-sector alternatives at sharp features. The feature-adaptive atlas gives the lowest gap RMSE and mean normal error on all three bodies. On the ellipsoid, this improvement comes from the smooth second-order jet and Hessian-based normal update. On the sharp prism and cone, it comes from additional feature leaves and stored candidate sectors around normal-sector transitions.
+Figure~\ref{fig:surface_error_main} gives the surface-local error evidence, Figure~\ref{fig:results} summarizes the aggregate trends and Table~\ref{tab:main_results} reports the corresponding values. Tricubic interpolation improves the scalar SDF over trilinear interpolation, especially on the smooth ellipsoid, but it remains a single scalar field and therefore cannot represent normal-sector alternatives at sharp features. The feature-adaptive atlas gives the lowest gap RMSE and mean normal error on all three bodies. On the ellipsoid, this improvement comes from the smooth second-order jet and Hessian-based normal update. On the sharp prism and cone, it comes from additional feature leaves and stored candidate sectors around normal-sector transitions.
 
 \begin{table}[htbp]
 \centering
@@ -757,7 +711,7 @@ Cone & 0.423 & 0.423 & 0.290 & 70.665 & 364.27 & 0.505 & 3.516 & 0.476 & \textbf
 
 \subsection{Supplemental geometric validation}
 
-The supplemental validation suite checks whether the same generic backend behaves consistently beyond the three main geometries. No supplemental case uses case-specific runtime logic: the same projection reference, normal-sector extraction, uniform atlas and feature-adaptive atlas builders are used throughout. Table~\ref{tab:supplemental_results} is organized as a reviewer-risk audit: each row states the concern being tested, the key quantitative evidence and the conclusion supported by that evidence. Figure~\ref{fig:supplemental_validation} then shows the corresponding trends for exact smooth tests, feature-zone subsets, ablations, mesh refinements and noisy-normal stress tests. The automated advantage audit reports no failed checks.
+The supplemental validation suite checks whether the same generic backend behaves consistently beyond the three main geometries. No supplemental case uses case-specific runtime logic: the same projection reference, normal-sector extraction, uniform atlas and feature-adaptive atlas builders are used throughout. Figure~\ref{fig:surface_error_supplemental} gives the corresponding surface-local error maps. Table~\ref{tab:supplemental_results} is organized as a reviewer-risk audit: each row states the concern being tested, the key quantitative evidence and the conclusion supported by that evidence. Figure~\ref{fig:supplemental_validation} then shows the corresponding trends for exact smooth tests, feature-zone subsets, ablations, mesh refinements and noisy-normal stress tests. The automated advantage audit reports no failed checks.
 
 \begin{table}[htbp]
 \centering
