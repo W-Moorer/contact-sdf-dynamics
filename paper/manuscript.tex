@@ -693,31 +693,40 @@ Cone & 0.423 & 0.423 & 0.290 & 70.665 & 364.27 & 0.505 & 3.516 & 0.476 & \textbf
 
 \subsection{Supplemental geometric validation}
 
-The supplemental validation suite checks whether the same generic backend behaves consistently beyond the three main geometries. No supplemental case uses case-specific runtime logic: the same projection reference, normal-sector extraction, uniform atlas and feature-adaptive atlas builders are used throughout. Table~\ref{tab:supplemental_results} summarizes exact smooth tests, sharp-feature tests, zone-focused cone tests, ablations, mesh refinements, noisy-normal stress tests, a non-convex smooth torus and rigid-transform invariance. The automated advantage audit reports no failed checks.
+The supplemental validation suite checks whether the same generic backend behaves consistently beyond the three main geometries. No supplemental case uses case-specific runtime logic: the same projection reference, normal-sector extraction, uniform atlas and feature-adaptive atlas builders are used throughout. Table~\ref{tab:supplemental_results} is organized as a reviewer-risk audit: each row states the concern being tested, the key quantitative evidence and the conclusion supported by that evidence. Figure~\ref{fig:supplemental_validation} then shows the corresponding trends for exact smooth tests, feature-zone subsets, ablations, mesh refinements and noisy-normal stress tests. The automated advantage audit reports no failed checks.
 
 \begin{table}[htbp]
 \centering
-\caption{Supplemental geometric validation. Normal values are mean angular errors in degrees, cone-hit values are rates, and Hessian values are Frobenius RMSE.}
+\caption{Supplemental validation audit. Numeric pairs are uniform atlas $\rightarrow$ feature-adaptive atlas unless stated otherwise.}
 \label{tab:supplemental_results}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lllll}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.94}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.50\textwidth}>{\raggedright\arraybackslash}X@{}}
 \toprule
-Test & Metric & uniform & feature-adaptive & evidence tag\\
+Reviewer concern & Key evidence & Conclusion\\
 \midrule
-Sphere exact & normal / Hessian & 1.327 / 0.527 & \textbf{0.527} / \textbf{0.219} & exact smooth jet\\
-Two-plane wedge & gap / cone hit & 0.0186 / 1.000 & \textbf{0.0082} / 1.000 & sharp edge cone\\
-Capped cylinder & cone hit / normal & 0.543 / 11.65 & \textbf{0.914} / \textbf{7.68} & rim sectors\\
-Cone zones & side normal; rim hit; apex hit & 7.997; 0.662; 0.246 & \textbf{3.822}; \textbf{0.926}; \textbf{0.492} & no cone-specific code\\
-Resolution/depth ablations & sphere normal; cylinder cone hit & 4.137--0.745; 0.711 & \textbf{0.517}; \textbf{0.844--0.911} & parameter trend\\
-Mesh consistency & sphere normal; cylinder cone hit & 2.725--1.407; 0.654--0.400 & \textbf{0.631--0.421}; \textbf{0.981--0.980} & tessellation trend\\
-Noisy sphere normals & normal at 2/5/10 deg noise & 2.13 / 4.14 / 7.71 & 1.75 / 4.27 / 8.48 & limitation case\\
-Torus & normal & 14.055 & \textbf{1.383} & non-convex smooth\\
-Rigid transform & max gap / normal difference & n/a & $2.5{\times}10^{-16}$ / $2.2{\times}10^{-16}$ & frame invariance\\
+Smooth jets &
+Exact sphere: mean normal error $1.327\rightarrow\mathbf{0.527}$ deg; Hessian RMSE $0.527\rightarrow\mathbf{0.219}$. &
+The normal and Hessian records are checked against exact SDF quantities.\\
+Sharp sectors &
+Two-plane wedge cone-hit $1.000\rightarrow1.000$; capped-cylinder rim cone-hit $0.543\rightarrow\mathbf{0.914}$. &
+The backend preserves edge and rim sectors instead of averaging them into one normal.\\
+Cone zones &
+Cone zones: side normal error $7.997\rightarrow\mathbf{3.822}$ deg; rim cone-hit $0.662\rightarrow\mathbf{0.926}$; apex cone-hit $0.246\rightarrow\mathbf{0.492}$. &
+Generic feature handling improves side, rim and apex behavior; the apex remains singular.\\
+Robustness &
+Torus normal error $14.055\rightarrow\mathbf{1.383}$ deg; Fig.~\ref{fig:supplemental_validation} reports ablation and mesh-consistency trends; rigid-transform differences are $2.5{\times}10^{-16}$ gap and $2.2{\times}10^{-16}$ normal. &
+The trend is not limited to convex shapes, one grid depth, one tessellation or one frame.\\
+Limitation &
+Noisy sphere normals at 10 deg: mean normal error $7.71\rightarrow8.48$ deg. &
+Hessian fitting can amplify noisy visual normals and needs input-normal quality control.\\
 \bottomrule
-\end{tabular}}
+\end{tabularx}
+}
 \end{table}
 
-The supplemental results support the same claims as the main tests. The sphere and torus rows show that smooth jets are not limited to ellipsoids. The wedge, cylinder and cone-zone rows show that edge, rim and apex sectors are handled by the same normal-sector backend. The ablation and mesh-consistency rows show that the advantage does not depend on a single resolution choice. The noisy-normal row is intentionally not highlighted as a win: it records that finite-difference Hessian estimates amplify input normal noise and should be paired with normal-quality controls for scanned or imported meshes.
+The supplemental results support the same claims as the main tests. The smooth-jet and robustness rows show that the method is not limited to ellipsoids. The sharp-sector and cone-zone rows show that edge, rim and apex sectors are handled by the same normal-sector backend. Figure~\ref{fig:supplemental_validation} adds the ablation and mesh-consistency trends, showing that the advantage does not depend on a single resolution choice. The noisy-normal row is intentionally not highlighted as a win: it records that finite-difference Hessian estimates amplify input normal noise and should be paired with normal-quality controls for scanned or imported meshes.
 
 \begin{figure}[htbp]
 \centering
