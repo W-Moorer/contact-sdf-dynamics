@@ -37,6 +37,8 @@ class Representative:
     azim: float
     zoom: float = 0.56
     edge_alpha: float = 0.08
+    rotate_axis: str | None = None
+    rotate_deg: float = 0.0
 
 
 REPRESENTATIVES = [
@@ -50,13 +52,13 @@ REPRESENTATIVES = [
         edge_alpha=0.07,
     ),
     Representative(
-        key="cylinder",
-        label="capped cylinder",
-        mesh_path=ROOT / "results" / "rmd_extracted" / "rev_clearance_joint_8_GSURFACE__Body3.Cylinder1.npz",
+        key="hollow_cylinder",
+        label="hollow cylinder",
+        mesh_path=ROOT / "results" / "rmd_extracted" / "rev_clearance_joint_3_GSURFACE__Body1.Subtract1.npz",
         elev=18,
-        azim=-36,
-        zoom=0.57,
-        edge_alpha=0.07,
+        azim=-58,
+        zoom=0.56,
+        edge_alpha=0.075,
     ),
     Representative(
         key="gear",
@@ -75,6 +77,8 @@ REPRESENTATIVES = [
         azim=-42,
         zoom=0.57,
         edge_alpha=0.060,
+        rotate_axis="x",
+        rotate_deg=90.0,
     ),
     Representative(
         key="box",
@@ -82,7 +86,7 @@ REPRESENTATIVES = [
         mesh_path=ROOT / "results" / "rmd_extracted" / "groove_cube_8_SOLID__Body2.Box1.npz",
         elev=24,
         azim=-42,
-        zoom=0.57,
+        zoom=0.74,
         edge_alpha=0.055,
     ),
 ]
@@ -142,7 +146,30 @@ def set_panel_axis(ax, vertices: np.ndarray, rep: Representative) -> None:
         pass
 
 
+def rotation_matrix(axis: str, deg: float) -> np.ndarray:
+    theta = np.radians(float(deg))
+    c = float(np.cos(theta))
+    s = float(np.sin(theta))
+    axis = axis.lower()
+    if axis == "x":
+        return np.asarray([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
+    if axis == "y":
+        return np.asarray([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]])
+    if axis == "z":
+        return np.asarray([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+    raise ValueError(f"Unsupported rotation axis: {axis}")
+
+
+def display_vertices(vertices: np.ndarray, rep: Representative) -> np.ndarray:
+    if rep.rotate_axis is None or abs(float(rep.rotate_deg)) <= 1e-12:
+        return vertices
+    center = 0.5 * (vertices.min(axis=0) + vertices.max(axis=0))
+    matrix = rotation_matrix(rep.rotate_axis, rep.rotate_deg)
+    return (vertices - center) @ matrix.T + center
+
+
 def render_panel(ax, vertices: np.ndarray, faces: np.ndarray, method: str, rep: Representative) -> None:
+    vertices = display_vertices(vertices, rep)
     triangles = triangles_from_mesh(vertices, faces)
     facecolors = shaded_facecolors(triangles, COLORS[method])
     edge_alpha = rep.edge_alpha if method == "original" else min(rep.edge_alpha, 0.035)
@@ -206,16 +233,16 @@ def render_composite(
     args: argparse.Namespace,
 ) -> None:
     PAPER.mkdir(parents=True, exist_ok=True)
-    fig = plt.figure(figsize=(7.25, 3.05), dpi=400)
+    fig = plt.figure(figsize=(7.25, 3.18), dpi=400)
     gs = fig.add_gridspec(
         nrows=2,
         ncols=5,
         left=0.065,
         right=0.992,
-        bottom=0.035,
+        bottom=0.045,
         top=0.88,
         wspace=-0.08,
-        hspace=-0.18,
+        hspace=0.02,
     )
     for col, rep in enumerate(REPRESENTATIVES):
         for row, method in enumerate(METHODS):
