@@ -38,46 +38,59 @@ def generate_main_figure() -> None:
     rows = load_rows()
     labels = ["ellipsoid", "hex prism", "cone"]
     x = np.arange(len(rows))
-    width = 0.24
+    width = 0.18
 
     colors = {
-        "grid": "#6c757d",
+        "trilinear": "#6c757d",
+        "tricubic": "#8d99ae",
         "uniform": "#2a9d8f",
         "adaptive": "#e76f51",
     }
 
-    fig, axes = plt.subplots(1, 3, figsize=(8.8, 2.7), constrained_layout=True)
+    fig, axes = plt.subplots(1, 3, figsize=(8.8, 2.9), constrained_layout=True)
 
     gap_grid = [r["grid_gap_rmse"] for r in rows]
+    gap_cubic = [r["tricubic_gap_rmse"] for r in rows]
     gap_uniform = [r["atlas_gap_rmse"] for r in rows]
     gap_adapt = [r["adaptive_gap_rmse"] for r in rows]
-    axes[0].bar(x - width, gap_grid, width, label="grid SDF", color=colors["grid"])
-    axes[0].bar(x, gap_uniform, width, label="uniform atlas", color=colors["uniform"])
-    axes[0].bar(x + width, gap_adapt, width, label="feature-adaptive", color=colors["adaptive"])
+    axes[0].bar(x - 1.5 * width, gap_grid, width, label="trilinear SDF", color=colors["trilinear"])
+    axes[0].bar(x - 0.5 * width, gap_cubic, width, label="tricubic SDF", color=colors["tricubic"])
+    axes[0].bar(x + 0.5 * width, gap_uniform, width, label="uniform atlas", color=colors["uniform"])
+    axes[0].bar(x + 1.5 * width, gap_adapt, width, label="feature-adaptive", color=colors["adaptive"])
     axes[0].set_title("(a) gap accuracy")
     axes[0].set_ylabel("gap RMSE")
 
     n_grid = [r["grid_normal_mean_deg"] for r in rows]
+    n_cubic = [r["tricubic_normal_mean_deg"] for r in rows]
     n_uniform = [r["atlas_best_normal_mean_deg"] for r in rows]
     n_adapt = [r["adaptive_best_normal_mean_deg"] for r in rows]
-    axes[1].bar(x - width, n_grid, width, color=colors["grid"])
-    axes[1].bar(x, n_uniform, width, color=colors["uniform"])
-    axes[1].bar(x + width, n_adapt, width, color=colors["adaptive"])
+    axes[1].bar(x - 1.5 * width, n_grid, width, color=colors["trilinear"])
+    axes[1].bar(x - 0.5 * width, n_cubic, width, color=colors["tricubic"])
+    axes[1].bar(x + 0.5 * width, n_uniform, width, color=colors["uniform"])
+    axes[1].bar(x + 1.5 * width, n_adapt, width, color=colors["adaptive"])
     axes[1].set_title("(b) normal accuracy")
     axes[1].set_ylabel("mean normal error (deg)")
 
-    speed = [r["speedup_projection_vs_adaptive"] for r in rows]
-    axes[2].bar(x, speed, 0.42, color=colors["adaptive"])
+    speed_grid = [r["speedup_projection_vs_grid"] for r in rows]
+    speed_cubic = [r["speedup_projection_vs_tricubic"] for r in rows]
+    speed_adapt = [r["speedup_projection_vs_adaptive"] for r in rows]
+    axes[2].bar(x - width, speed_grid, width, color=colors["trilinear"])
+    axes[2].bar(x, speed_cubic, width, color=colors["tricubic"])
+    axes[2].bar(x + width, speed_adapt, width, color=colors["adaptive"])
     axes[2].set_title("(c) runtime speedup")
-    axes[2].set_ylabel("projection/adaptive time")
+    axes[2].set_ylabel("projection/query time")
+    axes[2].set_yscale("log")
 
     for ax in axes:
         ax.set_xticks(x)
         ax.set_xticklabels(labels, rotation=18, ha="right")
         style_axis(ax)
 
-    axes[0].legend(loc="upper right", fontsize=7, frameon=False)
+    handles, legend_labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, legend_labels, loc="upper center", ncol=4, fontsize=6.5,
+               frameon=False, bbox_to_anchor=(0.5, 1.08))
     fig.savefig(PAPER / "fig_results.pdf", bbox_inches="tight")
+    fig.savefig(PAPER / "fig_results.svg", bbox_inches="tight")
 
 
 def line_pair(ax, x, y_uniform, y_adaptive, *, xlabel: str, ylabel: str,

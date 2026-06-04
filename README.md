@@ -58,7 +58,7 @@ Outputs are written under `results/`:
 The validation compares:
 
 1. **Online projection baseline**: KD-tree candidate search + point-to-triangle closest projection + corner-normal interpolation.
-2. **Scalar grid SDF baseline**: scalar sampled SDF with trilinear interpolation and trilinear-gradient normal.
+2. **Scalar grid SDF baselines**: scalar sampled SDF with trilinear and tricubic interpolation; normals are gradients of the scalar interpolants.
 3. **Uniform Contact-SDF Atlas**: precomputed cell records with local jets or multi-normal-cone records.
 4. **Adaptive Contact-SDF Atlas**: dyadic/octal refinement of difficult cells while preserving O(1) runtime lookup through a finest-grid leaf table.
 
@@ -105,4 +105,4 @@ The current atlas is intentionally second-order for smooth cells. Third-order te
 
 ## Current validation result
 
-After feature-specific refinement, `pytest -q` returns `11 passed`.  The sharp-body normal-cone hit rate improves from 0.677 to 0.892 on the hexagonal prism and from 0.554 to 0.785 on the cone, while runtime queries remain about 9.6x-11.2x faster than online closest-point projection in this Python prototype.  The supplemental suite reports `issues: []`, including sphere Hessian, wedge, capped cylinder, cone apex/rim/side, ablations, mesh consistency, noisy normals, torus and rigid-transform invariance.  See `VALIDATION_REPORT.md` for details.
+After the compact batch backend and tricubic baseline update, `pytest -q` returns `14 passed`.  The sharp-body normal-cone hit rate improves from 0.677 to 0.923 on the hexagonal prism and from 0.554 to 0.846 on the cone.  Feature-adaptive atlas construction is more expensive offline (18.4 s on the ellipsoid and about 70-73 s on the sharp benchmarks in this Python prototype), but compact runtime queries are sub-microsecond per query and avoid online closest-point projection.  The supplemental suite reports `issues: []`, including sphere Hessian, wedge, capped cylinder, cone apex/rim/side, ablations, mesh consistency, noisy normals, torus and rigid-transform invariance.  See `VALIDATION_REPORT.md` for details.

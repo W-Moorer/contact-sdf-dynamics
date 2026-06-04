@@ -5,7 +5,7 @@ import numpy as np
 from contact_sdf.shapes import ellipsoid_mesh, sample_near_surface
 from contact_sdf.projection import MeshProjector, angular_error_deg
 from contact_sdf.atlas import build_contact_sdf_atlas
-from contact_sdf.grid_sdf import build_grid_sdf
+from contact_sdf.grid_sdf import build_grid_sdf, build_cubic_grid_sdf
 from contact_sdf.metrics import best_candidate_angle_deg
 
 
@@ -34,6 +34,33 @@ def test_scalar_grid_gradient_is_available_baseline():
     assert np.all(np.isfinite(n))
 
 
+def test_tricubic_grid_gradient_is_available_baseline():
+    mesh = ellipsoid_mesh(n_lon=16, n_lat=8)
+    projector = MeshProjector(mesh, k=32)
+    grid = build_cubic_grid_sdf(projector, mesh.bbox(pad=0.2), resolution=15)
+    q = sample_near_surface(mesh, n=50, band=0.04, seed=18)
+    phi, n = grid.eval(q)
+    assert phi.shape == (50,)
+    assert n.shape == (50, 3)
+    assert np.all(np.isfinite(phi))
+    assert np.all(np.isfinite(n))
+
+
+def test_uniform_compact_eval_matches_diagnostic_primary_fields():
+    mesh = ellipsoid_mesh(n_lon=16, n_lat=8)
+    bbox = mesh.bbox(pad=0.2)
+    projector = MeshProjector(mesh, k=32)
+    atlas = build_contact_sdf_atlas(projector, bbox, resolution=13, active_tol=0.02)
+    q = sample_near_surface(mesh, n=80, band=0.04, seed=19)
+    rich = atlas.eval(q)
+    compact = atlas.eval_compact(q)
+    assert np.allclose(compact.phi, rich.phi)
+    assert np.allclose(compact.normal, rich.normal)
+    assert np.array_equal(compact.mode, rich.mode)
+    assert compact.leaf_id.shape == (80,)
+    assert compact.candidate_count.shape == (80,)
+
+
 def test_adaptive_atlas_refines_and_evaluates_without_online_projection():
     from contact_sdf.shapes import cone_mesh
     from contact_sdf.atlas import build_adaptive_contact_sdf_atlas, MODE_MULTI
@@ -52,6 +79,27 @@ def test_adaptive_atlas_refines_and_evaluates_without_online_projection():
     assert np.percentile(ang, 95) < 70.0
     assert np.any(ae.mode == MODE_MULTI)
     assert np.all(np.isfinite(ae.phi))
+
+
+def test_adaptive_compact_eval_matches_diagnostic_primary_fields():
+    from contact_sdf.shapes import cone_mesh
+    from contact_sdf.atlas import build_adaptive_contact_sdf_atlas
+
+    mesh = cone_mesh(n_seg=12)
+    projector = MeshProjector(mesh, k=24)
+    adaptive = build_adaptive_contact_sdf_atlas(
+        projector, mesh.bbox(pad=0.2), base_resolution=5, max_depth=2,
+        active_tol=0.03, refine_band=0.18, normal_tol_deg=15.0,
+        gap_tol_factor=0.18, hessian_for_smooth=False,
+    )
+    q = sample_near_surface(mesh, n=80, band=0.035, seed=21)
+    rich = adaptive.eval(q)
+    compact = adaptive.eval_compact(q)
+    assert np.allclose(compact.phi, rich.phi)
+    assert np.allclose(compact.normal, rich.normal)
+    assert np.array_equal(compact.mode, rich.mode)
+    assert compact.leaf_id.shape == (80,)
+    assert compact.candidate_count.shape == (80,)
 
 
 def test_smooth_adaptive_hessian_improves_ellipsoid_normals():

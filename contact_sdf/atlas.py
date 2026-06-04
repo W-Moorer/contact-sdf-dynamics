@@ -33,6 +33,21 @@ class AtlasEval:
 
 
 @dataclass
+class CompactAtlasEval:
+    """Projection-free atlas result for solver hot paths.
+
+    ``eval()`` keeps per-query candidate lists for diagnostics and normal-cone
+    metrics.  ``eval_compact()`` avoids those Python allocations and returns the
+    fixed-size fields a contact solver typically needs in its inner loop.
+    """
+    phi: np.ndarray
+    normal: np.ndarray
+    mode: np.ndarray
+    leaf_id: np.ndarray
+    candidate_count: np.ndarray
+
+
+@dataclass
 class _CellRecord:
     center: np.ndarray
     half_width: float
@@ -159,6 +174,40 @@ class ContactSDFAtlas:
                     cand_phi.append(gs.copy())
         return AtlasEval(phi=phi, normal=normalize(normal), mode=mode,
                          candidate_normals=cand_normals, candidate_phi=cand_phi)
+
+    def eval_compact(self, points: np.ndarray) -> CompactAtlasEval:
+        pts = np.asarray(points, dtype=float)
+        u = (pts - self.origin[None, :]) / self.spacing
+        idx = np.floor(u).astype(int)
+        max_idx = np.array(self.shape) - 1
+        idx = np.minimum(np.maximum(idx, 0), max_idx)
+        center = self.origin[None, :] + (idx.astype(float) + 0.5) * self.spacing
+        dx = pts - center
+
+        i, j, k = idx[:, 0], idx[:, 1], idx[:, 2]
+        phi0 = self.phi0[i, j, k]
+        n0 = self.normal0[i, j, k]
+        H = self.hessian0[i, j, k]
+        mode = self.mode[i, j, k].astype(np.int8, copy=True)
+
+        phi = phi0 + np.einsum("ni,ni->n", n0, dx)
+        normal = n0.copy()
+        smooth = mode == MODE_SMOOTH
+        if np.any(smooth):
+            dx_s = dx[smooth]
+            H_s = H[smooth]
+            phi[smooth] += 0.5 * np.einsum("ni,nij,nj->n", dx_s, H_s, dx_s)
+            normal[smooth] = n0[smooth] + np.einsum("nij,nj->ni", H_s, dx_s)
+
+        flat_id = np.ravel_multi_index((i, j, k), self.shape).astype(np.int64)
+        candidate_count = self.cand_count[i, j, k].astype(np.int16, copy=True)
+        return CompactAtlasEval(
+            phi=phi,
+            normal=normalize(normal),
+            mode=mode,
+            leaf_id=flat_id,
+            candidate_count=candidate_count,
+        )
 
 
 def _estimate_hessians(normals: np.ndarray, spacing: float) -> np.ndarray:
@@ -373,6 +422,32 @@ class AdaptiveContactSDFAtlas:
                 cand_phi.append(np.array([phi[i]]))
         return AtlasEval(phi=phi, normal=normalize(normal), mode=mode_out,
                          candidate_normals=cand_normals, candidate_phi=cand_phi)
+
+    def eval_compact(self, points: np.ndarray) -> CompactAtlasEval:
+        pts = np.asarray(points, dtype=float)
+        leaf_ids = self._locate_leaf_ids(pts).astype(np.int64, copy=False)
+        center = self.leaf_center[leaf_ids]
+        dx = pts - center
+        n0 = self.normal0[leaf_ids]
+        H = self.hessian0[leaf_ids]
+        mode = self.mode[leaf_ids].astype(np.int8, copy=True)
+
+        phi = self.phi0[leaf_ids] + np.einsum("ni,ni->n", n0, dx)
+        normal = n0.copy()
+        smooth = mode == MODE_SMOOTH
+        if np.any(smooth):
+            dx_s = dx[smooth]
+            H_s = H[smooth]
+            phi[smooth] += 0.5 * np.einsum("ni,nij,nj->n", dx_s, H_s, dx_s)
+            normal[smooth] = n0[smooth] + np.einsum("nij,nj->ni", H_s, dx_s)
+
+        return CompactAtlasEval(
+            phi=phi,
+            normal=normalize(normal),
+            mode=mode,
+            leaf_id=leaf_ids,
+            candidate_count=self.cand_count[leaf_ids].astype(np.int16, copy=True),
+        )
 
 
 def _make_record(projector: MeshProjector, center: np.ndarray, h: float,

@@ -1,13 +1,13 @@
 from __future__ import annotations
 from pathlib import Path
-import sys, csv, json
+import sys, csv, json, time
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from contact_sdf.mesh_format import CornerNormalMesh, weld_positions
 from contact_sdf.shapes import ellipsoid_mesh, prism_mesh, cone_mesh, sample_near_surface
 from contact_sdf.projection import MeshProjector, angular_error_deg, normalize
-from contact_sdf.grid_sdf import build_grid_sdf
+from contact_sdf.grid_sdf import build_grid_sdf, CubicGridSDF
 from contact_sdf.atlas import build_contact_sdf_atlas, build_adaptive_contact_sdf_atlas, MODE_MULTI
 from contact_sdf.metrics import rmse, percentile, best_candidate_angle_deg, cone_hit_rate, time_call
 
@@ -102,6 +102,29 @@ def normal_sector_sharp_mask(mesh: CornerNormalMesh, active_normals: list[np.nda
     return mask
 
 
+def time_build(fn, *args, **kwargs):
+    t0 = time.perf_counter()
+    out = fn(*args, **kwargs)
+    return out, float(time.perf_counter() - t0)
+
+
+def adaptive_backend_kwargs(sector_angle_deg: float) -> dict:
+    """One generic backend configuration for all main validation geometries."""
+    return dict(
+        base_resolution=5,
+        max_depth=2,
+        feature_max_depth=3,
+        active_tol=0.01,
+        sector_angle_deg=sector_angle_deg,
+        max_candidates=16,
+        gap_tol_factor=0.08,
+        normal_tol_deg=6.0,
+        feature_normal_tol_deg=5.0,
+        feature_enrichment=True,
+        hessian_for_smooth=True,
+    )
+
+
 def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 180, n_edge: int = 80):
     print(f"\n=== {mesh.name}: faces={mesh.n_faces}, res={resolution} ===", flush=True)
     npz_path = DATA / f"{mesh.name}.npz"
@@ -111,7 +134,9 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
     if not cnmesh_path.exists():
         mesh.save_rmd_like(cnmesh_path)
     bbox = mesh.bbox(pad=0.20)
+    t0 = time.perf_counter()
     projector = MeshProjector(mesh, k=min(72, mesh.n_faces))
+    projection_index_build_s = float(time.perf_counter() - t0)
 
     band = 0.06 * max(*(bbox[1] - bbox[0]))
     q_surface = sample_near_surface(mesh, n_surface, band=band, seed=42)
@@ -121,41 +146,32 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
     # Build offline structures.  The adaptive atlas starts from a coarser base
     # grid, then refines cells whose local jet/normal-cone record is not
     # accurate enough at sampled corners and face centers.
-    grid = build_grid_sdf(projector, bbox, resolution=resolution, active_tol=0.01)
+    grid, trilinear_build_s = time_build(build_grid_sdf, projector, bbox, resolution=resolution, active_tol=0.01)
+    t0 = time.perf_counter()
+    cubic = CubicGridSDF.from_grid(grid)
+    tricubic_build_s = float(trilinear_build_s + (time.perf_counter() - t0))
     sector_angle_deg = 35.0
-    atlas = build_contact_sdf_atlas(
+    atlas, uniform_atlas_build_s = time_build(
+        build_contact_sdf_atlas,
         projector, bbox, resolution=resolution, active_tol=0.03, sector_angle_deg=sector_angle_deg
     )
     atlas.save_npz(RESULTS / f"{mesh.name}_uniform_atlas.npz")
-    # Feature-specific refinement: smooth shapes use the ordinary adaptive depth;
-    # sharp/mixed shapes spend extra depth only around normal-sector transitions.
-    if mesh.tags.get("type") == "smooth":
-        adapt_kwargs = dict(base_resolution=5, max_depth=2, feature_max_depth=2,
-                            active_tol=0.025, sector_angle_deg=sector_angle_deg,
-                            max_candidates=8,
-                            gap_tol_factor=0.06, normal_tol_deg=4.0,
-                            feature_normal_tol_deg=5.0, feature_enrichment=False,
-                            hessian_for_smooth=True)
-    else:
-        adapt_kwargs = dict(base_resolution=4, max_depth=1, feature_max_depth=3,
-                            active_tol=0.005, sector_angle_deg=sector_angle_deg,
-                            max_candidates=16,
-                            gap_tol_factor=0.10, normal_tol_deg=10.0,
-                            feature_normal_tol_deg=5.0, feature_enrichment=True,
-                            hessian_for_smooth=False)
-    adaptive = build_adaptive_contact_sdf_atlas(
+    adaptive, adaptive_atlas_build_s = time_build(
+        build_adaptive_contact_sdf_atlas,
         projector, bbox, multi_if_feature=False, refine_band=1.5 * band,
-        **adapt_kwargs
+        **adaptive_backend_kwargs(sector_angle_deg)
     )
     adaptive.save_npz(RESULTS / f"{mesh.name}_feature_adaptive_atlas.npz")
 
     # Accuracy relative to online corner-normal projection baseline.
     proj = projector.project(queries, active_tol=0.01, sector_angle_deg=sector_angle_deg)
     grid_phi, grid_n = grid.eval(queries)
+    cubic_phi, cubic_n = cubic.eval(queries)
     atlas_eval = atlas.eval(queries)
     adaptive_eval = adaptive.eval(queries)
 
     grid_ang = angular_error_deg(grid_n, proj.normal)
+    cubic_ang = angular_error_deg(cubic_n, proj.normal)
     atlas_ang = best_candidate_angle_deg(atlas_eval.candidate_normals, proj.normal)
     adaptive_ang = best_candidate_angle_deg(adaptive_eval.candidate_normals, proj.normal)
 
@@ -174,8 +190,11 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
     _, t_proj = time_call(projector.project, bench_q, repeat=2,
                           active_tol=0.01, sector_angle_deg=sector_angle_deg)
     _, t_grid = time_call(grid.eval, bench_q, repeat=5)
-    _, t_atlas = time_call(atlas.eval, bench_q, repeat=5)
-    _, t_adaptive = time_call(adaptive.eval, bench_q, repeat=5)
+    _, t_cubic = time_call(cubic.eval, bench_q, repeat=5)
+    _, t_atlas = time_call(atlas.eval_compact, bench_q, repeat=8)
+    _, t_adaptive = time_call(adaptive.eval_compact, bench_q, repeat=8)
+    _, t_atlas_diagnostic = time_call(atlas.eval, bench_q, repeat=3)
+    _, t_adaptive_diagnostic = time_call(adaptive.eval, bench_q, repeat=3)
 
     row = {
         "shape": mesh.name,
@@ -183,16 +202,29 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
         "queries": len(queries),
         "sharp_queries": int(sharp_mask.sum()),
         "resolution": resolution,
+        "projection_index_build_s": projection_index_build_s,
+        "trilinear_build_s": trilinear_build_s,
+        "tricubic_build_s": tricubic_build_s,
+        "uniform_atlas_build_s": uniform_atlas_build_s,
+        "adaptive_atlas_build_s": adaptive_atlas_build_s,
         "grid_gap_rmse": rmse(grid_phi, proj.phi),
+        "trilinear_gap_rmse": rmse(grid_phi, proj.phi),
+        "tricubic_gap_rmse": rmse(cubic_phi, proj.phi),
         "atlas_gap_rmse": rmse(atlas_eval.phi, proj.phi),
         "adaptive_gap_rmse": rmse(adaptive_eval.phi, proj.phi),
         "grid_normal_mean_deg": float(np.mean(grid_ang)),
+        "trilinear_normal_mean_deg": float(np.mean(grid_ang)),
+        "tricubic_normal_mean_deg": float(np.mean(cubic_ang)),
         "atlas_best_normal_mean_deg": float(np.mean(atlas_ang)),
         "adaptive_best_normal_mean_deg": float(np.mean(adaptive_ang)),
         "grid_normal_p95_deg": percentile(grid_ang, 95),
+        "trilinear_normal_p95_deg": percentile(grid_ang, 95),
+        "tricubic_normal_p95_deg": percentile(cubic_ang, 95),
         "atlas_best_normal_p95_deg": percentile(atlas_ang, 95),
         "adaptive_best_normal_p95_deg": percentile(adaptive_ang, 95),
         "grid_grad_norm_mean_abs_err": float(np.mean(np.abs(np.linalg.norm(grid_n, axis=1) - 1.0))),
+        "trilinear_grad_norm_mean_abs_err": float(np.mean(np.abs(np.linalg.norm(grid_n, axis=1) - 1.0))),
+        "tricubic_grad_norm_mean_abs_err": float(np.mean(np.abs(np.linalg.norm(cubic_n, axis=1) - 1.0))),
         "atlas_multi_mode_rate": float(np.mean(atlas_eval.mode == MODE_MULTI)),
         "adaptive_multi_mode_rate": float(np.mean(adaptive_eval.mode == MODE_MULTI)),
         "atlas_sharp_cone_hit_rate": sharp_hit,
@@ -206,12 +238,19 @@ def validate_one(mesh: CornerNormalMesh, resolution: int = 9, n_surface: int = 1
         "adaptive_feature_max_depth": int(adaptive.stats.get("feature_max_depth", 0)),
         "adaptive_compression_vs_finest_uniform": float(adaptive.stats.get("compression_vs_finest_uniform", 0.0)),
         "projection_us_per_query": 1e6 * t_proj / len(bench_q),
+        "trilinear_us_per_query": 1e6 * t_grid / len(bench_q),
+        "tricubic_us_per_query": 1e6 * t_cubic / len(bench_q),
+        "uniform_atlas_compact_us_per_query": 1e6 * t_atlas / len(bench_q),
+        "adaptive_atlas_compact_us_per_query": 1e6 * t_adaptive / len(bench_q),
+        "uniform_atlas_diagnostic_us_per_query": 1e6 * t_atlas_diagnostic / len(bench_q),
+        "adaptive_atlas_diagnostic_us_per_query": 1e6 * t_adaptive_diagnostic / len(bench_q),
         "grid_us_per_query": 1e6 * t_grid / len(bench_q),
         "atlas_us_per_query": 1e6 * t_atlas / len(bench_q),
         "adaptive_us_per_query": 1e6 * t_adaptive / len(bench_q),
         "speedup_projection_vs_atlas": t_proj / max(t_atlas, 1e-12),
         "speedup_projection_vs_adaptive": t_proj / max(t_adaptive, 1e-12),
         "speedup_projection_vs_grid": t_proj / max(t_grid, 1e-12),
+        "speedup_projection_vs_tricubic": t_proj / max(t_cubic, 1e-12),
     }
     print(json.dumps(row, indent=2), flush=True)
     return row
