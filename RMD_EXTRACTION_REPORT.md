@@ -115,8 +115,30 @@ vertices, as expected for smooth geometry.
 
 - Parser module: `contact_sdf/rmd_parser.py`
 - Inventory/export script: `scripts/analyze_rmd_surfaces.py`
+- Zero-level visualization script: `scripts/generate_rmd_surface_visuals.py`
 - Tests: `tests/test_rmd_parser.py`
 - Converted local outputs: `results/rmd_extracted/*.npz` and `*.cnmesh`
 
 The converted `.npz` files can be loaded as `CornerNormalMesh` objects and used
 directly by the existing projection, grid-SDF and atlas builders.
+
+## Visualization export
+
+The extracted RMD surfaces can be rendered with the same generic backend used by
+the parsed benchmark cases.  For the RMD data, the visualization exporter only
+writes the original surface and the feature-adaptive atlas zero-level surface:
+
+```powershell
+python scripts\generate_rmd_surface_visuals.py --mesh-dir results\rmd_extracted --out-dir results\rmd_surface_visuals
+```
+
+The script also accepts direct `.rmd` input when the extracted `.npz` files have
+not been generated:
+
+```powershell
+python scripts\generate_rmd_surface_visuals.py --rmd-dir data\rmd --frame marker --out-dir results\rmd_surface_visuals
+```
+
+Outputs are independent PNG/PDF files named
+`rmd_surface_<model>_original` and `rmd_surface_<model>_feature_adaptive`.
+Adaptive atlas caches are stored under `results/rmd_surface_visuals/cache`.
