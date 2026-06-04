@@ -542,8 +542,14 @@ def _merge_candidate_planes(center: np.ndarray, records: list[tuple[np.ndarray, 
     return cand_phi0, cand_normal0, len(order)
 
 
+def _cell_feature_active_tol(active_tol: float, h: float, feature_active_tol_factor: float) -> float:
+    """Return the offline tolerance used to discover cell-local sectors."""
+    return max(float(active_tol), float(feature_active_tol_factor) * float(h))
+
+
 def _feature_enrich_record(projector: MeshProjector, record: _CellRecord, h: float,
                            max_candidates: int, active_tol: float,
+                           feature_active_tol_factor: float = 0.5,
                            sector_angle_deg: float = 30.0) -> _CellRecord:
     """Turn a leaf into a feature-specific multi-record when its cell samples
     indicate edge/vertex/multi-sector behavior.
@@ -554,7 +560,8 @@ def _feature_enrich_record(projector: MeshProjector, record: _CellRecord, h: flo
     local samples.  Runtime evaluation remains a lookup + dot products.
     """
     sample = np.vstack([record.center[None, :], _sample_cell(record.center, h)])
-    ref = projector.project(sample, active_tol=active_tol, sector_angle_deg=sector_angle_deg)
+    sector_tol = _cell_feature_active_tol(active_tol, h, feature_active_tol_factor)
+    ref = projector.project(sample, active_tol=sector_tol, sector_angle_deg=sector_angle_deg)
     records: list[tuple[np.ndarray, float]] = []
     has_feature = False
     for x_s, p_s, phi_s, feat_s, active in zip(sample, ref.closest, ref.phi, ref.feature, ref.active_normals):
@@ -589,6 +596,7 @@ def _needs_refine(projector: MeshProjector, record: _CellRecord, h: float, level
                   smooth_max_depth: int, feature_max_depth: int, refine_band: float,
                   active_tol: float, gap_tol_factor: float, normal_tol_deg: float,
                   feature_normal_tol_deg: float, force_feature_to_depth: int,
+                  feature_active_tol_factor: float = 0.5,
                   sector_angle_deg: float = 30.0) -> tuple[bool, float, dict]:
     """Decide whether a leaf should split.
 
@@ -598,15 +606,13 @@ def _needs_refine(projector: MeshProjector, record: _CellRecord, h: float, level
     is spent only where contact is non-smooth or where the local active feature
     set changes within the cell.
     """
-    if level >= feature_max_depth:
-        return False, 0.0, {"reason": "feature_max_depth"}
-
     cell_radius = float(np.sqrt(3.0) * 0.5 * h)
     if abs(record.phi0) > refine_band + cell_radius:
         return False, 0.0, {"reason": "far_center_lipschitz"}
 
     sample = _sample_cell(record.center, h)
-    ref = projector.project(sample, active_tol=active_tol, sector_angle_deg=sector_angle_deg)
+    sector_tol = _cell_feature_active_tol(active_tol, h, feature_active_tol_factor)
+    ref = projector.project(sample, active_tol=sector_tol, sector_angle_deg=sector_angle_deg)
     near = bool(min(np.min(np.abs(ref.phi)), abs(record.phi0)) <= refine_band)
     if not near:
         return False, 0.0, {"reason": "far_samples"}
@@ -632,9 +638,12 @@ def _needs_refine(projector: MeshProjector, record: _CellRecord, h: float, level
         "ref_multi": bool(np.any(ref_multi)),
         "mode_multi": bool(record.mode == MODE_MULTI),
         "is_feature_cell": is_feature_cell,
+        "feature_active_tol": sector_tol,
     }
 
     if is_feature_cell:
+        if level >= feature_max_depth:
+            return False, err_bound, reason | {"reason": "feature_max_depth"}
         if level < force_feature_to_depth:
             return True, err_bound, reason | {"reason": "feature_min_depth"}
         if max_ang > feature_normal_tol_deg and level < feature_max_depth:
@@ -669,6 +678,7 @@ def build_adaptive_contact_sdf_atlas(
     feature_max_depth: int | None = None,
     feature_normal_tol_deg: float = 4.0,
     feature_enrichment: bool = True,
+    feature_active_tol_factor: float = 0.5,
     sector_angle_deg: float = 35.0,
 ) -> AdaptiveContactSDFAtlas:
     """Build an adaptive Feature-aware Contact-SDF Atlas.
@@ -696,6 +706,10 @@ def build_adaptive_contact_sdf_atlas(
     feature_enrichment:
         If true, final feature leaves store a union of local normal-sector
         records sampled inside the leaf rather than only the center projection.
+    feature_active_tol_factor:
+        Offline feature discovery radius as a fraction of the current cell side
+        length.  This guards against missing sharp edges that pass through a
+        leaf when the point-query ``active_tol`` is smaller than the cell.
     """
     lo, hi = bbox
     extent = hi - lo
@@ -731,6 +745,7 @@ def build_adaptive_contact_sdf_atlas(
         "normal_tol_deg": normal_tol_deg,
         "feature_normal_tol_deg": feature_normal_tol_deg,
         "feature_enrichment": bool(feature_enrichment),
+        "feature_active_tol_factor": float(feature_active_tol_factor),
         "sector_angle_deg": float(sector_angle_deg),
         "split_count": 0,
         "feature_split_count": 0,
@@ -772,6 +787,7 @@ def build_adaptive_contact_sdf_atlas(
             normal_tol_deg=normal_tol_deg,
             feature_normal_tol_deg=feature_normal_tol_deg,
             force_feature_to_depth=int(always_refine_multi_to),
+            feature_active_tol_factor=feature_active_tol_factor,
             sector_angle_deg=sector_angle_deg,
         )
         rec.error_bound = float(err_bound)
@@ -788,7 +804,8 @@ def build_adaptive_contact_sdf_atlas(
                 # Should not happen, but keep the atlas robust.
                 if feature_enrichment:
                     rec = _feature_enrich_record(projector, rec, h, max_candidates, active_tol,
-                                             sector_angle_deg=sector_angle_deg)
+                                                 feature_active_tol_factor=feature_active_tol_factor,
+                                                 sector_angle_deg=sector_angle_deg)
                 add_leaf(rec, fine_min, fine_size)
                 return
             for ox, oy, oz in product([0, child_size], repeat=3):
@@ -799,6 +816,7 @@ def build_adaptive_contact_sdf_atlas(
             # still offline-only; eval() remains projection-free.
             if feature_enrichment and (int(rec.mode) == MODE_MULTI or bool(info.get("is_feature_cell", False))):
                 rec = _feature_enrich_record(projector, rec, h, max_candidates, active_tol,
+                                             feature_active_tol_factor=feature_active_tol_factor,
                                              sector_angle_deg=sector_angle_deg)
             add_leaf(rec, fine_min, fine_size)
 

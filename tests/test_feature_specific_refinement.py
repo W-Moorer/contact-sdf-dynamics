@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
-from contact_sdf.shapes import prism_mesh, sample_near_surface
+from contact_sdf.shapes import cylinder_mesh, prism_mesh, sample_near_surface
 from contact_sdf.projection import MeshProjector
 from contact_sdf.atlas import build_adaptive_contact_sdf_atlas, MODE_MULTI
 from contact_sdf.metrics import best_candidate_angle_deg, cone_hit_rate
@@ -78,6 +78,34 @@ def test_feature_specific_refinement_reaches_deeper_feature_leaves():
                             ref.normal[sharp_mask], tol_deg=10.0)
         assert hit > 0.70
     assert np.all(np.isfinite(ev.phi))
+
+
+def test_cell_scaled_feature_enrichment_keeps_cylinder_rim_sectors():
+    mesh = cylinder_mesh(n_seg=16)
+    projector = MeshProjector(mesh, k=32)
+    atlas = build_adaptive_contact_sdf_atlas(
+        projector,
+        mesh.bbox(pad=0.2),
+        base_resolution=4,
+        max_depth=1,
+        feature_max_depth=2,
+        active_tol=0.002,
+        refine_band=0.18,
+        gap_tol_factor=0.12,
+        normal_tol_deg=10.0,
+        feature_normal_tol_deg=5.0,
+        hessian_for_smooth=False,
+        feature_enrichment=True,
+        feature_active_tol_factor=0.5,
+        multi_if_feature=False,
+        sector_angle_deg=35.0,
+    )
+    q = np.asarray([[1.0, 0.0, 0.5 * float(mesh.tags["height"])]])
+    ev = atlas.eval(q)
+    candidates = ev.candidate_normals[0]
+    assert len(candidates) >= 2
+    assert np.max(candidates @ np.asarray([0.0, 0.0, 1.0])) > 0.95
+    assert np.max(candidates @ np.asarray([1.0, 0.0, 0.0])) > 0.90
 
 
 def test_sharp_metric_excludes_smooth_benchmark_sector_artifacts():

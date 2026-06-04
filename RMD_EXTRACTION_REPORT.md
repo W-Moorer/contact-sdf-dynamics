@@ -142,3 +142,18 @@ python scripts\generate_rmd_surface_visuals.py --rmd-dir data\rmd --frame marker
 Outputs are independent PNG/PDF files named
 `rmd_surface_<model>_original` and `rmd_surface_<model>_feature_adaptive`.
 Adaptive atlas caches are stored under `results/rmd_surface_visuals/cache`.
+
+For feature-adaptive RMD rendering, the exporter uses a visualization-specific
+scalarization: multi-sector leaves are converted to the candidate gap plane with
+the smallest absolute value at the query point.  This is intentionally different
+from `eval_compact()`, whose primary scalar field is optimized for solver hot
+paths and can select only one sector in a normal cone.  The RMD exporter also
+uses a small anchor tolerance so that residual atlas error at an input surface
+corner is not exaggerated into a visible geometric displacement.
+
+If older feature-adaptive images were generated before this visualization path
+was added, refresh them with:
+
+```powershell
+python scripts\generate_rmd_surface_visuals.py --mesh-dir results\rmd_extracted --out-dir results\rmd_surface_visuals --methods feature_adaptive --force
+```

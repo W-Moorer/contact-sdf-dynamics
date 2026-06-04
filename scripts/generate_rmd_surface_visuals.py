@@ -83,7 +83,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-resolution", type=int, default=5)
     parser.add_argument("--max-depth", type=int, default=2)
     parser.add_argument("--feature-max-depth", type=int, default=3)
+    parser.add_argument(
+        "--feature-active-tol-factor",
+        type=float,
+        default=0.5,
+        help="Cell-size factor used to discover competing feature sectors offline.",
+    )
     parser.add_argument("--probe-resolution", type=int, default=17)
+    parser.add_argument(
+        "--anchor-tol-factor",
+        type=float,
+        default=0.25,
+        help="Keep original corners whose atlas gap is within this fraction of the normal search radius.",
+    )
     parser.add_argument("--projector-k", type=int, default=96)
     parser.add_argument("--max-surfaces", type=int, default=None)
     parser.add_argument("--force", action="store_true", help="Regenerate images and atlas caches.")
@@ -146,7 +158,8 @@ def atlas_cache_path(args: argparse.Namespace, stem: str) -> Path:
         / "cache"
         / (
             f"{stem}_feature_adaptive"
-            f"_b{args.base_resolution}_d{args.max_depth}_f{args.feature_max_depth}.npz"
+            f"_b{args.base_resolution}_d{args.max_depth}_f{args.feature_max_depth}"
+            f"_a{args.feature_active_tol_factor:g}.npz"
         )
     )
 
@@ -176,6 +189,7 @@ def load_or_build_adaptive_atlas(
         normal_tol_deg=6.0,
         feature_normal_tol_deg=5.0,
         feature_enrichment=True,
+        feature_active_tol_factor=args.feature_active_tol_factor,
         hessian_for_smooth=True,
         multi_if_feature=False,
         refine_band=refine_band,
@@ -183,6 +197,34 @@ def load_or_build_adaptive_atlas(
     path.parent.mkdir(parents=True, exist_ok=True)
     atlas.save_npz(path)
     return atlas
+
+
+def adaptive_visual_phi(atlas: AdaptiveContactSDFAtlas, points: np.ndarray) -> np.ndarray:
+    """Scalarize adaptive atlas records for zero-surface visualization.
+
+    Solver queries keep the primary compact fields plus candidate counts.
+    Rendering needs one scalar value, so multi-sector leaves use the candidate
+    gap plane with the smallest absolute value at each query point.
+    """
+    pts = np.asarray(points, dtype=float)
+    compact = atlas.eval_compact(pts)
+    phi = compact.phi.copy()
+    multi = compact.candidate_count > 1
+    if not np.any(multi):
+        return phi
+
+    for lid in np.unique(compact.leaf_id[multi]):
+        lid = int(lid)
+        mask = compact.leaf_id == lid
+        count = int(atlas.cand_count[lid])
+        if count <= 1:
+            continue
+        dx = pts[mask] - atlas.leaf_center[lid]
+        normals = atlas.cand_normal0[lid, :count]
+        candidate_phi = atlas.cand_phi0[lid, :count][None, :] + dx @ normals.T
+        best = np.argmin(np.abs(candidate_phi), axis=1)
+        phi[mask] = candidate_phi[np.arange(candidate_phi.shape[0]), best]
+    return phi
 
 
 def surface_for_method(
@@ -199,10 +241,19 @@ def surface_for_method(
         clip_band = 1.35 * float(np.max(bbox[1] - bbox[0])) / float(args.probe_resolution - 1)
         return zero_gap_surface_from_mesh(
             named.mesh,
-            lambda pts: atlas.eval_compact(pts).phi,
+            lambda pts: adaptive_visual_phi(atlas, pts),
             search_radius=0.55 * clip_band,
+            anchor_tol=args.anchor_tol_factor * 0.55 * clip_band,
         )
     raise ValueError(f"Unknown method: {method}")
+
+
+def output_is_current(args: argparse.Namespace, named: NamedMesh, method: str, out: Path) -> bool:
+    if not (out.with_suffix(".png").exists() and out.with_suffix(".pdf").exists()):
+        return False
+    if method != "feature_adaptive":
+        return True
+    return atlas_cache_path(args, named.stem).exists()
 
 
 def main() -> None:
@@ -224,7 +275,7 @@ def main() -> None:
         for method in args.methods:
             done += 1
             out = args.out_dir / f"rmd_surface_{named.stem}_{method}"
-            if out.with_suffix(".png").exists() and out.with_suffix(".pdf").exists() and not args.force:
+            if output_is_current(args, named, method, out) and not args.force:
                 print(f"[{done}/{total}] keep {out.name}", flush=True)
                 continue
             t1 = time.perf_counter()
