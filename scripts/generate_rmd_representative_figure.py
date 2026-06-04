@@ -67,7 +67,7 @@ REPRESENTATIVES = [
         mesh_path=ROOT / "results" / "rmd_extracted" / "jiandanjiaolian_2_GSURFACE__GEAR21.GEAR21.npz",
         elev=16,
         azim=-58,
-        zoom=0.52,
+        zoom=0.36,
         edge_alpha=0.065,
     ),
     Representative(
