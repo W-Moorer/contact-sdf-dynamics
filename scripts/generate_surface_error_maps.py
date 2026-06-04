@@ -30,6 +30,7 @@ from scripts.generate_surface_visuals import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper"
+FIGURES = PAPER / "figures" / "08_numerical_validation"
 RESULTS = ROOT / "results" / "surface_error_maps"
 
 MAIN_MODELS = ["ellipsoid", "hex_prism", "cone"]
@@ -337,7 +338,8 @@ def render_figure(
         color="#a60000",
     )
     add_colorbars(fig)
-    out = PAPER / figure_name
+    FIGURES.mkdir(parents=True, exist_ok=True)
+    out = FIGURES / figure_name
     fig.savefig(out.with_suffix(".pdf"), bbox_inches="tight")
     fig.savefig(out.with_suffix(".svg"), bbox_inches="tight")
     fig.savefig(out.with_suffix(".png"), dpi=500, bbox_inches="tight", facecolor="white")
@@ -357,7 +359,7 @@ def write_summary(rows: list[dict]) -> None:
 
 def main() -> None:
     args = parse_args()
-    PAPER.mkdir(exist_ok=True)
+    FIGURES.mkdir(parents=True, exist_ok=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
 
     requested_sets = set(args.sets)
@@ -380,10 +382,10 @@ def main() -> None:
         write_summary(rows)
     if "main" in requested_sets:
         render_figure("fig_surface_error_main", MAIN_MODELS, all_data)
-        print("wrote paper/fig_surface_error_main.[pdf|svg|png]", flush=True)
+        print("wrote paper/figures/08_numerical_validation/fig_surface_error_main.[pdf|svg|png]", flush=True)
     if "supplemental" in requested_sets:
         render_figure("fig_surface_error_supplemental", SUPPLEMENTAL_MODELS, all_data)
-        print("wrote paper/fig_surface_error_supplemental.[pdf|svg|png]", flush=True)
+        print("wrote paper/figures/08_numerical_validation/fig_surface_error_supplemental.[pdf|svg|png]", flush=True)
 
 
 if __name__ == "__main__":

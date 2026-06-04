@@ -25,6 +25,7 @@ from scripts.generate_surface_visuals import COLORS, cubic_bbox, shaded_facecolo
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper"
+FIGURES = PAPER / "figures" / "08_numerical_validation"
 RESULTS = ROOT / "results" / "rmd_representatives"
 
 
@@ -232,7 +233,7 @@ def render_composite(
     surfaces: dict[tuple[str, str], tuple[np.ndarray, np.ndarray]],
     args: argparse.Namespace,
 ) -> None:
-    PAPER.mkdir(parents=True, exist_ok=True)
+    FIGURES.mkdir(parents=True, exist_ok=True)
     fig = plt.figure(figsize=(7.25, 3.18), dpi=400)
     gs = fig.add_gridspec(
         nrows=2,
@@ -261,7 +262,7 @@ def render_composite(
         va="center",
         fontsize=6.5,
     )
-    out = PAPER / args.out_name
+    out = FIGURES / args.out_name
     fig.savefig(out.with_suffix(".pdf"), bbox_inches="tight", facecolor="white")
     fig.savefig(out.with_suffix(".svg"), bbox_inches="tight", facecolor="white")
     fig.savefig(out.with_suffix(".png"), dpi=550, bbox_inches="tight", facecolor="white")

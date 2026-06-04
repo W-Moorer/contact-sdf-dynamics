@@ -29,6 +29,7 @@ DATA = ROOT / "data"
 RESULTS = ROOT / "results" / "surface_visuals"
 CACHE = RESULTS / "cache"
 PAPER = ROOT / "paper"
+ZERO_LEVEL_FIGURES = PAPER / "figures" / "08_numerical_validation" / "zero_level_panels"
 
 MODEL_ORDER = [
     "ellipsoid",
@@ -477,7 +478,7 @@ def method_surface(
 def main() -> None:
     args = parse_args()
     CACHE.mkdir(parents=True, exist_ok=True)
-    PAPER.mkdir(exist_ok=True)
+    ZERO_LEVEL_FIGURES.mkdir(parents=True, exist_ok=True)
     total = len(args.models) * len(args.methods)
     done = 0
     for model in args.models:
@@ -488,7 +489,7 @@ def main() -> None:
         print(f"[{model}] projector ready in {time.perf_counter() - t0:.2f}s", flush=True)
         for method in args.methods:
             done += 1
-            out = PAPER / f"fig_surface_{model}_{method}"
+            out = ZERO_LEVEL_FIGURES / f"fig_surface_{model}_{method}"
             if out.with_suffix(".png").exists() and out.with_suffix(".pdf").exists() and not args.force:
                 print(f"[{done}/{total}] keep {out.name}", flush=True)
                 continue

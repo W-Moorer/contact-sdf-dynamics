@@ -5,7 +5,9 @@ This folder contains a complete LaTeX manuscript draft prepared with Elsevier's 
 Files:
 - `manuscript.tex`: manuscript source
 - `references.bib`: BibTeX references
-- `fig_pipeline.pdf`, `fig_leaf_types.pdf`, `fig_refinement.pdf`, `fig_results.pdf`, `fig_supplemental_validation.pdf`: figures
+- `figures/06_contact_sdf_atlas/`: Contact-SDF Atlas section figures
+- `figures/08_numerical_validation/`: Numerical validation section figures
+- `figures/08_numerical_validation/zero_level_panels/`: independent zero-level surface panels kept as figure assets
 - `highlights.txt`: separate highlights draft
 - `manuscript.pdf`: compiled PDF
 

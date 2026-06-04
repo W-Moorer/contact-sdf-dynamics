@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results" / "validation_summary.json"
 SUPPLEMENTAL_RESULTS = ROOT / "results" / "supplemental_validation_summary.json"
 PAPER = ROOT / "paper"
+FIGURES = PAPER / "figures" / "08_numerical_validation"
 
 plt.rcParams.update({
     "font.family": "sans-serif",
@@ -154,8 +155,9 @@ def generate_main_figure() -> None:
     handles = [Patch(facecolor=COLORS[name], label=method_labels[name]) for name in legend_order]
     fig.legend(handles=handles, loc="upper center", ncol=5, fontsize=6.4,
                frameon=False, bbox_to_anchor=(0.5, 1.04))
-    fig.savefig(PAPER / "fig_results.pdf", bbox_inches="tight")
-    fig.savefig(PAPER / "fig_results.svg", bbox_inches="tight")
+    FIGURES.mkdir(parents=True, exist_ok=True)
+    fig.savefig(FIGURES / "fig_results.pdf", bbox_inches="tight")
+    fig.savefig(FIGURES / "fig_results.svg", bbox_inches="tight")
 
 
 def line_pair(ax, x, y_uniform, y_adaptive, *, xlabel: str, ylabel: str,
@@ -248,8 +250,9 @@ def generate_supplemental_figure() -> None:
     handles, labels = ax[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=2, frameon=False,
                bbox_to_anchor=(0.5, 1.04))
-    fig.savefig(PAPER / "fig_supplemental_validation.pdf", bbox_inches="tight")
-    fig.savefig(PAPER / "fig_supplemental_validation.svg", bbox_inches="tight")
+    FIGURES.mkdir(parents=True, exist_ok=True)
+    fig.savefig(FIGURES / "fig_supplemental_validation.pdf", bbox_inches="tight")
+    fig.savefig(FIGURES / "fig_supplemental_validation.svg", bbox_inches="tight")
 
 
 def main() -> None:

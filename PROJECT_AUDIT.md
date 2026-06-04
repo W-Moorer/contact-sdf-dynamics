@@ -10,7 +10,7 @@ This audit uses the `research-paper-writing` paper-review checklist and the PDF 
 4. The manuscript now states that reported validation focuses on gap, normal and multi-sector behavior.  Hessian support remains part of the interface and theory, but Hessian accuracy is not claimed by the current tables.
 5. `scripts/build_and_validate.py` no longer rewrites tracked benchmark data when the files already exist, so running validation does not create unrelated data diffs.
 6. The validation report, README, highlights and manuscript tables now use the same current metrics.
-7. `scripts/generate_paper_figures.py` now regenerates `paper/fig_results.pdf` from `results/validation_summary.json`.
+7. `scripts/generate_paper_figures.py` now regenerates `paper/figures/08_numerical_validation/fig_results.pdf` from `results/validation_summary.json`.
 8. Smooth ellipsoid validation now enables Hessian fitting for the feature-adaptive atlas, so Figure 5(b) compares the intended smooth jet model rather than a piecewise-constant normal fallback.
 9. The projection backend now exposes welded-edge and welded-vertex incident corner-normal sectors. This fixed the cone-apex undercount without adding cone-specific logic.
 10. Added a supplemental validation suite covering sphere exact Hessian, wedge, capped cylinder, cone zones, ablations, mesh consistency, noisy normals, torus and rigid-transform invariance.

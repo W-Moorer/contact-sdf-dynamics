@@ -465,14 +465,14 @@ If $L$ is smooth, the runtime evaluation uses Eq.~\eqref{eq:second_order_jet} or
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.95\textwidth]{fig_pipeline.pdf}
+\includegraphics[width=0.95\textwidth]{figures/06_contact_sdf_atlas/fig_pipeline.pdf}
 \caption{Conceptual pipeline. The corner-normal mesh is converted to a normal-sector complex. Closest-feature computation is moved to offline atlas construction. Runtime contact queries evaluate stored smooth jets or normal-cone records.}
 \label{fig:pipeline}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.95\textwidth]{fig_leaf_types.pdf}
+\includegraphics[width=0.95\textwidth]{figures/06_contact_sdf_atlas/fig_leaf_types.pdf}
 \caption{Normal-sector interpretation and leaf records. (a) The same geometric position can carry different face-corner normals. (b) Smooth leaves store a local SDF jet. (c) Sharp leaves store an active normal cone rather than an averaged normal.}
 \label{fig:leaf_types}
 \end{figure}
@@ -505,7 +505,7 @@ The feature-specific rule is
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.90\textwidth]{fig_refinement.pdf}
+\includegraphics[width=0.90\textwidth]{figures/06_contact_sdf_atlas/fig_refinement.pdf}
 \caption{Feature-specific refinement. Smooth leaves stop at the ordinary depth once the jet is accurate. Leaves containing edge, vertex or multi-sector behavior are allowed to refine more deeply.}
 \label{fig:refinement}
 \end{figure}
@@ -633,14 +633,14 @@ Before reporting aggregate errors, Figure~\ref{fig:surface_error_main} and Figur
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.98\textwidth]{fig_surface_error_main.pdf}
+\includegraphics[width=0.98\textwidth]{figures/08_numerical_validation/fig_surface_error_main.pdf}
 \caption{Surface-based contact-error maps for the three main benchmark bodies. Every panel uses the same original triangle surface for a given body, so apparent smoothness of an interpolated zero level set is not used as evidence. The upper row for each body shows $\abs{g}$ error on a logarithmic color scale; the lower row shows normal angular error. Red dots indicate missed sharp normal-sector constraints.}
 \label{fig:surface_error_main}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.98\textwidth]{fig_surface_error_supplemental.pdf}
+\includegraphics[width=0.98\textwidth]{figures/08_numerical_validation/fig_surface_error_supplemental.pdf}
 \caption{Surface-based contact-error maps for supplemental benchmark bodies. The visualization protocol is identical to Figure~\ref{fig:surface_error_main}: common original surface geometry, face-center gap and normal errors, and red-dot markers for missed sharp-sector corners.}
 \label{fig:surface_error_supplemental}
 \end{figure}
@@ -651,7 +651,7 @@ To check the same representation on imported industrial-style data, we also pars
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.98\textwidth]{fig_rmd_representatives.pdf}
+\includegraphics[width=0.98\textwidth]{figures/08_numerical_validation/fig_rmd_representatives.pdf}
 \caption{Category-balanced RMD representatives selected from the parsed inventory. The upper row shows the original imported triangle meshes and the lower row shows the feature-adaptive atlas zero-level surface rendered with the same camera for each column. Each column is scaled to its own bounding box so that geometry type and feature coverage are visible; scale is not compared across columns.}
 \label{fig:rmd_representatives}
 \end{figure}
@@ -715,7 +715,7 @@ Cone & 0.423 & 0.423 & 0.290 & 70.665 & 364.27 & 0.505 & 3.516 & 0.476 & \textbf
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.95\textwidth]{fig_results.pdf}
+\includegraphics[width=0.95\textwidth]{figures/08_numerical_validation/fig_results.pdf}
 \caption{Prototype results as a reviewer-facing evidence summary. (a) Mean contact-normal error. (b) Gap RMSE. (c) Normal-cone hit rate on sharp-feature queries. (d) Log-scale compact query time for online projection, scalar SDFs and the feature-adaptive atlas.}
 \label{fig:results}
 \end{figure}
@@ -759,7 +759,7 @@ The supplemental results support the same claims as the main tests. The smooth-j
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.98\textwidth]{fig_supplemental_validation.pdf}
+\includegraphics[width=0.98\textwidth]{figures/08_numerical_validation/fig_supplemental_validation.pdf}
 \caption{Supplemental validation trends. (a) Exact sphere normal error across grid resolutions. (b) Exact sphere Hessian RMSE. (c) Cone side, rim and apex normal-sector hit rates. (d) Cylinder feature-depth ablation. (e) Cylinder mesh-refinement consistency. (f) Noisy-normal stress test, retained as a limitation case rather than an advantage claim.}
 \label{fig:supplemental_validation}
 \end{figure}
