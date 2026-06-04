@@ -306,6 +306,7 @@ def zero_gap_surface_from_mesh(
     search_radius: float,
     n_scan: int = 9,
     n_bisect: int = 18,
+    anchor_tol: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Recover a zero-gap surface by root-finding along input corner normals.
 
@@ -321,22 +322,33 @@ def zero_gap_surface_from_mesh(
     for j, t in enumerate(ts):
         vals[:, j] = eval_phi(base + t * normals)
 
-    lo = np.full(base.shape[0], -search_radius, dtype=float)
-    hi = np.full(base.shape[0], search_radius, dtype=float)
+    zero_idx = int(np.argmin(np.abs(ts)))
+    if anchor_tol is None:
+        anchor_tol = 0.15 * search_radius
+
+    lo = np.zeros(base.shape[0], dtype=float)
+    hi = np.zeros(base.shape[0], dtype=float)
     bracketed = np.zeros(base.shape[0], dtype=bool)
+    best_dist = np.full(base.shape[0], np.inf, dtype=float)
     best_width = np.full(base.shape[0], np.inf, dtype=float)
+    needs_root = np.abs(vals[:, zero_idx]) > anchor_tol
     for j in range(n_scan - 1):
         v0 = vals[:, j]
         v1 = vals[:, j + 1]
         cross = (v0 == 0.0) | (v1 == 0.0) | (np.signbit(v0) != np.signbit(v1))
+        dist = abs(0.5 * (ts[j] + ts[j + 1]))
         width = np.maximum(np.abs(v0), np.abs(v1))
-        take = cross & (width < best_width)
+        take = needs_root & cross & (
+            (dist < best_dist) |
+            ((np.abs(dist - best_dist) <= 1e-15) & (width < best_width))
+        )
         lo[take] = ts[j]
         hi[take] = ts[j + 1]
+        best_dist[take] = dist
         best_width[take] = width[take]
         bracketed[take] = True
 
-    roots = np.empty(base.shape[0], dtype=float)
+    roots = np.zeros(base.shape[0], dtype=float)
     if np.any(bracketed):
         l = lo[bracketed].copy()
         h = hi[bracketed].copy()
@@ -351,10 +363,6 @@ def zero_gap_surface_from_mesh(
             fl[same] = fm[same]
             h[~same] = m[~same]
         roots[bracketed] = 0.5 * (l + h)
-
-    if np.any(~bracketed):
-        nearest = np.argmin(np.abs(vals[~bracketed]), axis=1)
-        roots[~bracketed] = ts[nearest]
 
     vertices = base + roots[:, None] * normals
     faces = np.arange(vertices.shape[0], dtype=np.int64).reshape(-1, 3)
