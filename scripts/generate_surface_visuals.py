@@ -35,7 +35,6 @@ MODEL_ORDER = [
     "hex_prism",
     "cone",
     "sphere",
-    "wedge",
     "cylinder",
     "torus",
 ]

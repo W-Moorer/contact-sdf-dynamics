@@ -612,7 +612,7 @@ This generality is an explicit design objective. The atlas is not tied to a spec
 
 A Python prototype was implemented to validate the end-to-end concept. It is not optimized C++ and should be interpreted as a relative algorithmic comparison. The prototype supports:
 \begin{enumerate}[label=(\arabic*), leftmargin=1.8em]
-\item analytic generation of corner-normal meshes for smooth, sharp and mixed-feature benchmarks, including the ellipsoid, sphere, hexagonal prism, wedge, capped cylinder, cone and torus;
+\item analytic generation of corner-normal meshes for smooth, sharp and mixed-feature benchmarks, including the ellipsoid, sphere, hexagonal prism, capped cylinder, cone and torus;
 \item export of an RMD-like corner-normal mesh block, with one triangle and three corner normals per record;
 \item scalar grid SDF baselines using trilinear and tricubic interpolation, with normals obtained from the corresponding interpolant gradient;
 \item an online projection reference using candidate search and closest-feature projection on the mesh;
@@ -674,12 +674,6 @@ sphere &
 \includegraphics[width=0.158\textwidth]{fig_surface_sphere_tricubic.png} &
 \includegraphics[width=0.158\textwidth]{fig_surface_sphere_uniform_atlas.png} &
 \includegraphics[width=0.158\textwidth]{fig_surface_sphere_feature_adaptive.png}\\
-wedge &
-\includegraphics[width=0.158\textwidth]{fig_surface_wedge_original.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_wedge_trilinear.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_wedge_tricubic.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_wedge_uniform_atlas.png} &
-\includegraphics[width=0.158\textwidth]{fig_surface_wedge_feature_adaptive.png}\\
 cylinder &
 \includegraphics[width=0.158\textwidth]{fig_surface_cylinder_original.png} &
 \includegraphics[width=0.158\textwidth]{fig_surface_cylinder_trilinear.png} &
@@ -780,7 +774,7 @@ Smooth jets &
 Exact sphere: mean normal error $1.327\rightarrow\mathbf{0.527}$ deg; Hessian RMSE $0.527\rightarrow\mathbf{0.219}$. &
 The normal and Hessian records are checked against exact SDF quantities.\\
 Sharp sectors &
-Two-plane wedge cone-hit $1.000\rightarrow1.000$; capped-cylinder rim cone-hit $0.543\rightarrow\mathbf{0.914}$. &
+Capped-cylinder rim cone-hit $0.543\rightarrow\mathbf{0.914}$. &
 The backend preserves edge and rim sectors instead of averaging them into one normal.\\
 Cone zones &
 Cone zones: side normal error $7.997\rightarrow\mathbf{3.822}$ deg; rim cone-hit $0.662\rightarrow\mathbf{0.926}$; apex cone-hit $0.246\rightarrow\mathbf{0.492}$. &
